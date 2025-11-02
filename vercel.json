@@ -16,10 +16,6 @@
       "destination": "/admin.html"
     },
     {
-      "source": "/tournaments",
-      "destination": "/tournaments.html"
-    },
-    {
       "source": "/teams",
       "destination": "/teams.html"
     },

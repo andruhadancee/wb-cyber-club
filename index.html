@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WB Cyber Club - Главная</title>
+    <title>WB Cyber Club - Турниры</title>
     <link rel="icon" type="image/png" href="Group 2131328338.png">
     <link rel="icon" type="image/png" sizes="32x32" href="Group 2131328338.png">
     <link rel="icon" type="image/png" sizes="16x16" href="Group 2131328338.png">
     <link rel="apple-touch-icon" href="Group 2131328338.png">
     <link rel="shortcut icon" type="image/png" href="Group 2131328338.png">
-    <link rel="stylesheet" href="css/style.css?v=3.0">
+    <link rel="stylesheet" href="css/style.css?v=2.5">
     <link rel="stylesheet" href="css/skeleton.css">
 </head>
 <body>
@@ -21,7 +21,7 @@
             <div class="loader-gamepad">🎮</div>
             <div class="loader-gamepad">🎮</div>
         </div>
-        <div class="loader-text">Загрузка...</div>
+        <div class="loader-text">Загрузка турниров...</div>
     </div>
 
     <!-- Animated Background -->
@@ -37,8 +37,7 @@
             </a>
             
             <nav>
-                <a href="index.html" class="active">Главная</a>
-                <a href="tournaments.html">Турниры</a>
+                <a href="index.html" class="active">Турниры</a>
                 <a href="teams.html">Команды</a>
                 <a href="archive.html">Архив турниров</a>
                 <a href="regulations.html">Регламент</a>
@@ -66,90 +65,35 @@
         </div>
     </header>
 
+    <!-- Regulations Modal -->
+    <div class="modal" id="regulations-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Регламент турниров</h2>
+                <button class="modal-close" id="close-regulations-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>Выберите дисциплину для просмотра регламента:</p>
+                <div id="regulations-buttons" class="regulations-buttons">
+                    <!-- Кнопки дисциплин будут добавлены динамически -->
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Main Content -->
     <main class="container">
-        <!-- Hero Section -->
-        <section class="hero-section">
-            <h1 class="hero-title">Добро пожаловать в WB Cyber Club!</h1>
-            <p class="hero-subtitle">Профессиональная киберспортивная платформа для проведения турниров</p>
-        </section>
-
-        <!-- Statistics Section -->
-        <section class="stats-section">
-            <div class="stats-grid" id="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-icon">🏆</div>
-                    <div class="stat-value" id="active-tournaments-count">-</div>
-                    <div class="stat-label">Активных турниров</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon">👥</div>
-                    <div class="stat-value" id="total-teams-count">-</div>
-                    <div class="stat-label">Зарегистрированных команд</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon">📅</div>
-                    <div class="stat-value" id="upcoming-tournaments-count">-</div>
-                    <div class="stat-label">Ближайших турниров</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon">🎮</div>
-                    <div class="stat-value" id="disciplines-count">-</div>
-                    <div class="stat-label">Дисциплин</div>
-                </div>
+        <!-- Filters -->
+        <div class="filters-container">
+            <div class="filter-label">Фильтр по дисциплинам:</div>
+            <div class="filters" id="discipline-filters">
+                <!-- Filter buttons will be added dynamically -->
             </div>
-        </section>
-
-        <!-- Next Tournament Highlight -->
-        <section class="next-tournament-section" id="next-tournament-section" style="display: none;">
-            <h2 class="section-title">Ближайший турнир</h2>
-            <div class="next-tournament-card" id="next-tournament-card">
-                <!-- Будет заполнено динамически -->
-            </div>
-        </section>
-
-        <!-- Featured Tournaments -->
-        <section class="featured-tournaments-section">
-            <div class="section-header">
-                <h2 class="section-title">Активные турниры</h2>
-                <a href="tournaments.html" class="btn-view-all">Смотреть все →</a>
-            </div>
-            <div class="tournaments-preview-grid" id="tournaments-preview-grid">
-                <!-- Будет заполнено динамически -->
-            </div>
-        </section>
-
-        <!-- Quick Links Section -->
-        <section class="quick-links-section">
-            <h2 class="section-title">Быстрые ссылки</h2>
-            <div class="quick-links-grid">
-                <a href="tournaments.html" class="quick-link-card">
-                    <div class="quick-link-icon">🏆</div>
-                    <h3>Турниры</h3>
-                    <p>Просмотр активных турниров и регистрация</p>
-                </a>
-                <a href="teams.html" class="quick-link-card">
-                    <div class="quick-link-icon">👥</div>
-                    <h3>Команды</h3>
-                    <p>Список зарегистрированных команд</p>
-                </a>
-                <a href="archive.html" class="quick-link-card">
-                    <div class="quick-link-icon">📦</div>
-                    <h3>Архив</h3>
-                    <p>История прошедших турниров</p>
-                </a>
-                <a href="calendar.html" class="quick-link-card">
-                    <div class="quick-link-icon">📅</div>
-                    <h3>Календарь</h3>
-                    <p>Календарь активностей и событий</p>
-                </a>
-                <a href="regulations.html" class="quick-link-card">
-                    <div class="quick-link-icon">📋</div>
-                    <h3>Регламент</h3>
-                    <p>Правила проведения турниров</p>
-                </a>
-            </div>
-        </section>
+        </div>
+        
+        <div class="tournaments-grid" id="tournaments-grid">
+            <!-- Tournaments will be loaded here dynamically -->
+        </div>
     </main>
 
     <!-- API Client -->
@@ -160,7 +104,9 @@
     <script src="js/particles.js"></script>
     <!-- Animations -->
     <script src="js/animations.js"></script>
-    <!-- Home Page Script -->
-    <script src="js/home-page.js"></script>
+    <!-- Regulations Script -->
+    <script src="js/regulations.js"></script>
+    <!-- Main Script -->
+    <script src="js/main-api.js"></script>
 </body>
 </html>
