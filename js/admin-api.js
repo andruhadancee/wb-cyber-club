@@ -816,10 +816,56 @@ async function loadPastTournaments(forceReload = false) {
 function displayFilteredPastTournaments() {
     const grid = document.getElementById('past-tournaments-grid');
     
+    // Парсер даты для корректной сортировки (YYYY-MM-DD, DD.MM.YYYY, "день месяц год")
+    function parseTournamentDate(dateStr) {
+        try {
+            let day, month, year;
+            const dots = dateStr.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+            const dashes = dateStr.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
+            const rus = dateStr.match(/(\d{1,2})\s+(\w+)\s+(\d{4})(?:\s+г\.)?/i);
+            if (dots) {
+                day = parseInt(dots[1]);
+                month = parseInt(dots[2]) - 1;
+                year = parseInt(dots[3]);
+            } else if (dashes) {
+                year = parseInt(dashes[1]);
+                month = parseInt(dashes[2]) - 1;
+                day = parseInt(dashes[3]);
+            } else if (rus) {
+                const months = {
+                    'января': 0, 'февраля': 1, 'марта': 2, 'апреля': 3,
+                    'мая': 4, 'июня': 5, 'июля': 6, 'августа': 7,
+                    'сентября': 8, 'октября': 9, 'ноября': 10, 'декабря': 11
+                };
+                day = parseInt(rus[1]);
+                month = months[rus[2].toLowerCase()];
+                year = parseInt(rus[3]);
+            } else {
+                const d = new Date(dateStr);
+                if (!isNaN(d)) return d;
+                return null;
+            }
+            if (month === undefined || isNaN(year) || isNaN(month) || isNaN(day)) return null;
+            return new Date(year, month, day);
+        } catch {
+            return null;
+        }
+    }
+    
     let filtered = allPastTournaments;
     if (selectedPastDiscipline !== 'all') {
         filtered = allPastTournaments.filter(t => t.discipline === selectedPastDiscipline);
     }
+    
+    // Сортируем по дате по убыванию (самые новые сверху)
+    filtered = filtered.slice().sort((a, b) => {
+        const da = parseTournamentDate(a.date);
+        const db = parseTournamentDate(b.date);
+        if (!da && !db) return 0;
+        if (!da) return 1;
+        if (!db) return -1;
+        return db - da;
+    });
     
     if (filtered.length === 0) {
         grid.innerHTML = '<div class="empty-state"><p>' + 
