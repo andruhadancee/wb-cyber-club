@@ -1007,9 +1007,9 @@ function openAddPastModal() {
     // Показываем только нужные поля для прошедших турниров
     document.getElementById('teams-field').style.display = 'block';
     document.getElementById('tournament-teams').required = true;
+    document.getElementById('winner-field').style.display = 'block'; // Показываем поле победителя
     
     // Скрываем ненужные поля
-    document.getElementById('winner-field').style.display = 'none';
     document.querySelector('[for="tournament-start-time"]').closest('.form-group').style.display = 'none';
     document.querySelector('[for="tournament-max-teams"]').closest('.form-group').style.display = 'none';
     document.querySelector('[for="tournament-custom-link"]').closest('.form-group').style.display = 'none';
@@ -1063,6 +1063,10 @@ function openEditPastModal(tournament) {
     const imageUrlValue = tournament.image_url || tournament.imageUrl || '';
     document.getElementById('tournament-image-url').value = imageUrlValue;
     
+    // Загружаем победителя
+    const winnerValue = tournament.winner || '';
+    document.getElementById('tournament-winner').value = winnerValue;
+    
     // Турнир загружен в форму
     
     document.getElementById('tournament-status').value = 'finished';
@@ -1070,9 +1074,9 @@ function openEditPastModal(tournament) {
     // Показываем только нужные поля для прошедших турниров
     document.getElementById('teams-field').style.display = 'block';
     document.getElementById('tournament-teams').required = true;
+    document.getElementById('winner-field').style.display = 'block'; // Показываем поле победителя
     
     // Скрываем ненужные поля
-    document.getElementById('winner-field').style.display = 'none';
     document.querySelector('[for="tournament-start-time"]').closest('.form-group').style.display = 'none';
     document.querySelector('[for="tournament-max-teams"]').closest('.form-group').style.display = 'none';
     document.querySelector('[for="tournament-custom-link"]').closest('.form-group').style.display = 'none';
@@ -1188,6 +1192,12 @@ async function handleFormSubmit(e) {
     const startTimeValue = startTimeGroup && startTimeGroup.style.display !== 'none' ? 
         (startTimeInput.value || null) : null;
     
+    // Получаем значение победителя для прошедших турниров
+    const winnerInput = document.getElementById('tournament-winner');
+    const winnerGroup = winnerInput ? winnerInput.closest('.form-group') : null;
+    const winnerValue = winnerGroup && winnerGroup.style.display !== 'none' ? 
+        (winnerInput.value.trim() || null) : null;
+    
     const formData = {
         title: document.getElementById('tournament-name').value,
         discipline: document.getElementById('tournament-discipline').value,
@@ -1195,7 +1205,7 @@ async function handleFormSubmit(e) {
         prize: document.getElementById('tournament-prize').value,
         maxTeams: maxTeamsValue,
         customLink: customLinkValue,
-        winner: null, // Убираем победителя из формы прошедших турниров
+        winner: winnerValue, // Добавляем победителя для прошедших турниров
         watchUrl: (document.getElementById('tournament-watch-url') && document.getElementById('tournament-watch-url').value.trim()) || null,
         imageUrl: (document.getElementById('tournament-image-url') && document.getElementById('tournament-image-url').value.trim()) || null,
         startTime: startTimeValue,
