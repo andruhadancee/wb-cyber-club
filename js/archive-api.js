@@ -215,26 +215,32 @@ function createPastTournamentCard(tournament) {
             </div>
             
             <div class="tournament-info">
-                <div class="info-item">
-                    <span class="info-label">Дисциплина</span>
-                    <span class="info-value">${window.formatDisciplineWithIconSync ? window.formatDisciplineWithIconSync(tournament.discipline) : tournament.discipline}</span>
+                <div class="info-row">
+                    <div class="info-item">
+                        <span class="info-label">Дисциплина</span>
+                        <span class="info-value">${window.formatDisciplineWithIconSync ? window.formatDisciplineWithIconSync(tournament.discipline) : tournament.discipline}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Дата</span>
+                        <span class="info-value">${formatDateForDisplay(tournament.date)}</span>
+                    </div>
                 </div>
-                <div class="info-item">
-                    <span class="info-label">Дата</span>
-                    <span class="info-value">${formatDateForDisplay(tournament.date)}</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">Призовой фонд</span>
-                    <span class="info-value">${tournament.prize}</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">Команд участвовало</span>
-                    <span class="info-value">${tournament.teams || 0}</span>
+                <div class="info-row">
+                    <div class="info-item">
+                        <span class="info-label">Призовой фонд</span>
+                        <span class="info-value">${tournament.prize}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Команд участвовало</span>
+                        <span class="info-value">${tournament.teams || 0}</span>
+                    </div>
                 </div>
                 ${tournament.winner ? `
-                <div class="info-item">
-                    <span class="info-label">🏆 Победитель</span>
-                    <span class="info-value" style="color: var(--color-pink-light); font-weight: 600;">${tournament.winner}</span>
+                <div class="info-row">
+                    <div class="info-item" style="width: 100%;">
+                        <span class="info-label">🏆 Победитель</span>
+                        <span class="info-value" style="color: var(--color-pink-light); font-weight: 600;">${tournament.winner}</span>
+                    </div>
                 </div>
                 ` : ''}
             </div>
