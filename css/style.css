@@ -1675,26 +1675,15 @@ main {
     padding: 0;
     display: flex;
     flex-direction: column;
-    min-height: 100%;
-    height: 100%;
 }
 
-/* Выравнивание кнопок в архиве - контент растягивается, кнопка внизу */
-#archive-grid.tournaments-grid {
-    display: grid !important;
-    grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)) !important;
-    gap: 18px !important;
-    align-items: stretch !important; /* Выравниваем карточки по высоте */
-}
-
+/* Выравнивание кнопок в архиве - кнопка всегда внизу карточки */
 #archive-grid .tournament-card {
     display: flex !important;
     flex-direction: column !important;
-    height: 100% !important; /* Карточки занимают всю высоту ячейки grid */
 }
 
 #archive-grid .tournament-info {
-    flex: 1;
     display: flex;
     flex-direction: column;
     padding: 0 20px;
