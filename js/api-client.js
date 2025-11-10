@@ -63,9 +63,28 @@ const API = {
             try {
                 let url = `${API_BASE_URL}/api/calendar`;
                 if (month) url += `?month=${encodeURIComponent(month)}`;
-                const response = await fetch(url);
-                if (!response.ok) throw new Error('Ошибка загрузки календаря');
-                return await response.json();
+                
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 7000);
+                
+                try {
+                    const response = await fetch(url, {
+                        signal: controller.signal,
+                        headers: {
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    clearTimeout(timeoutId);
+                    if (!response.ok) throw new Error('Ошибка загрузки календаря');
+                    return await response.json();
+                } catch (fetchError) {
+                    clearTimeout(timeoutId);
+                    if (fetchError.name === 'AbortError') {
+                        throw new Error('Таймаут запроса к серверу');
+                    }
+                    throw fetchError;
+                }
             } catch (error) {
                 console.error('❌ Ошибка получения календаря:', error);
                 return [];
@@ -113,13 +132,36 @@ const API = {
                 if (status) {
                     url += `?status=${status}`;
                 }
-                const response = await fetch(url);
-                if (!response.ok) throw new Error('Ошибка загрузки турниров');
-                const data = await response.json();
                 
-                // Сохраняем в кеш
-                setCachedData(cacheKey, data);
-                return data;
+                // Добавляем таймаут для fetch запроса
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 7000); // 7 секунд таймаут
+                
+                try {
+                    const response = await fetch(url, {
+                        signal: controller.signal,
+                        headers: {
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    clearTimeout(timeoutId);
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    const data = await response.json();
+                    
+                    // Сохраняем в кеш
+                    setCachedData(cacheKey, data);
+                    return data;
+                } catch (fetchError) {
+                    clearTimeout(timeoutId);
+                    if (fetchError.name === 'AbortError') {
+                        throw new Error('Таймаут запроса к серверу');
+                    }
+                    throw fetchError;
+                }
             } catch (error) {
                 console.error('❌ Ошибка получения турниров:', error);
                 // Возвращаем кеш, даже если устарел
@@ -127,9 +169,14 @@ const API = {
                 const oldCache = localStorage.getItem(`cache_${cacheKey}`);
                 if (oldCache) {
                     try {
-                        return JSON.parse(oldCache).data;
-                    } catch {}
+                        const cachedData = JSON.parse(oldCache).data;
+                        console.log('📦 Используем кешированные данные');
+                        return cachedData;
+                    } catch (parseError) {
+                        console.error('Ошибка парсинга кеша:', parseError);
+                    }
                 }
+                // Возвращаем пустой массив вместо undefined
                 return [];
             }
         },
@@ -190,17 +237,36 @@ const API = {
         // Получить все дисциплины (теперь возвращает объекты с id, name, color, logo_url)
         async getAll() {
             try {
-                const response = await fetch(`${API_BASE_URL}/api/disciplines`);
-                if (!response.ok) throw new Error('Ошибка загрузки дисциплин');
-                const disciplines = await response.json();
-                // Для обратной совместимости: если это массив объектов, возвращаем их, иначе fallback
-                if (Array.isArray(disciplines) && disciplines.length > 0 && typeof disciplines[0] === 'object') {
-                    return disciplines;
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 5000);
+                
+                try {
+                    const response = await fetch(`${API_BASE_URL}/api/disciplines`, {
+                        signal: controller.signal,
+                        headers: {
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    clearTimeout(timeoutId);
+                    if (!response.ok) throw new Error('Ошибка загрузки дисциплин');
+                    const disciplines = await response.json();
+                    // Для обратной совместимости: если это массив объектов, возвращаем их, иначе fallback
+                    if (Array.isArray(disciplines) && disciplines.length > 0 && typeof disciplines[0] === 'object') {
+                        return disciplines;
+                    }
+                    // Fallback на старый формат (массив строк)
+                    return ['CS 2', 'Dota 2', 'Valorant', 'Overwatch 2', 'League of Legends'].map(name => ({ name, color: null, logo_url: null }));
+                } catch (fetchError) {
+                    clearTimeout(timeoutId);
+                    if (fetchError.name === 'AbortError') {
+                        throw new Error('Таймаут запроса к серверу');
+                    }
+                    throw fetchError;
                 }
-                // Fallback на старый формат (массив строк)
-                return ['CS 2', 'Dota 2', 'Valorant', 'Overwatch 2', 'League of Legends'].map(name => ({ name, color: null, logo_url: null }));
             } catch (error) {
                 console.error('❌ Ошибка получения дисциплин:', error);
+                // Fallback на дефолтные дисциплины
                 return ['CS 2', 'Dota 2', 'Valorant', 'Overwatch 2', 'League of Legends'].map(name => ({ name, color: null, logo_url: null }));
             }
         },
@@ -269,9 +335,27 @@ const API = {
         // Получить все ссылки
         async getAll() {
             try {
-                const response = await fetch(`${API_BASE_URL}/api/links`);
-                if (!response.ok) throw new Error('Ошибка загрузки ссылок');
-                return await response.json();
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 5000);
+                
+                try {
+                    const response = await fetch(`${API_BASE_URL}/api/links`, {
+                        signal: controller.signal,
+                        headers: {
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    clearTimeout(timeoutId);
+                    if (!response.ok) throw new Error('Ошибка загрузки ссылок');
+                    return await response.json();
+                } catch (fetchError) {
+                    clearTimeout(timeoutId);
+                    if (fetchError.name === 'AbortError') {
+                        throw new Error('Таймаут запроса к серверу');
+                    }
+                    throw fetchError;
+                }
             } catch (error) {
                 console.error('❌ Ошибка получения ссылок:', error);
                 return {};
@@ -300,9 +384,27 @@ const API = {
         // Получить социальные ссылки
         async getAll() {
             try {
-                const response = await fetch(`${API_BASE_URL}/api/social`);
-                if (!response.ok) throw new Error('Ошибка загрузки социальных ссылок');
-                return await response.json();
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 5000);
+                
+                try {
+                    const response = await fetch(`${API_BASE_URL}/api/social`, {
+                        signal: controller.signal,
+                        headers: {
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    clearTimeout(timeoutId);
+                    if (!response.ok) throw new Error('Ошибка загрузки социальных ссылок');
+                    return await response.json();
+                } catch (fetchError) {
+                    clearTimeout(timeoutId);
+                    if (fetchError.name === 'AbortError') {
+                        throw new Error('Таймаут запроса к серверу');
+                    }
+                    throw fetchError;
+                }
             } catch (error) {
                 console.error('❌ Ошибка получения социальных ссылок:', error);
                 return {};
@@ -335,9 +437,28 @@ const API = {
                 if (tournamentId) {
                     url += `?tournamentId=${tournamentId}`;
                 }
-                const response = await fetch(url);
-                if (!response.ok) throw new Error('Ошибка загрузки команд');
-                return await response.json();
+                
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 7000);
+                
+                try {
+                    const response = await fetch(url, {
+                        signal: controller.signal,
+                        headers: {
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    clearTimeout(timeoutId);
+                    if (!response.ok) throw new Error('Ошибка загрузки команд');
+                    return await response.json();
+                } catch (fetchError) {
+                    clearTimeout(timeoutId);
+                    if (fetchError.name === 'AbortError') {
+                        throw new Error('Таймаут запроса к серверу');
+                    }
+                    throw fetchError;
+                }
             } catch (error) {
                 console.error('❌ Ошибка получения команд:', error);
                 return {};
@@ -402,9 +523,27 @@ const API = {
         // Получить все регламенты
         async getAll() {
             try {
-                const response = await fetch(`${API_BASE_URL}/api/regulations`);
-                if (!response.ok) throw new Error('Ошибка загрузки регламентов');
-                return await response.json();
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 5000);
+                
+                try {
+                    const response = await fetch(`${API_BASE_URL}/api/regulations`, {
+                        signal: controller.signal,
+                        headers: {
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    clearTimeout(timeoutId);
+                    if (!response.ok) throw new Error('Ошибка загрузки регламентов');
+                    return await response.json();
+                } catch (fetchError) {
+                    clearTimeout(timeoutId);
+                    if (fetchError.name === 'AbortError') {
+                        throw new Error('Таймаут запроса к серверу');
+                    }
+                    throw fetchError;
+                }
             } catch (error) {
                 console.error('❌ Ошибка получения регламентов:', error);
                 return [];

@@ -46,11 +46,67 @@ function clearArchiveCache() {
 // Функция инициализации страницы
 async function initializeArchivePage() {
     console.log('🚀 Инициализация страницы архива...');
-    await loadPastTournaments();
-    await loadDisciplineFilters();
-    await loadSocialLinks();
-    hideLoader();
-    console.log('✅ Страница архива загружена');
+    
+    // Устанавливаем таймаут для принудительного скрытия loader (10 секунд)
+    const loaderTimeout = setTimeout(() => {
+        console.warn('⚠️ Таймаут загрузки - принудительно скрываем loader');
+        hideLoader();
+    }, 10000);
+    
+    try {
+        await Promise.race([
+            loadPastTournaments(),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Таймаут загрузки турниров')), 8000))
+        ]).catch(err => {
+            console.error('❌ Ошибка загрузки турниров:', err);
+            const grid = document.getElementById('archive-grid');
+            if (grid) {
+                grid.innerHTML = `
+                    <div class="empty-state">
+                        <h3>Ошибка загрузки турниров</h3>
+                        <p>Проверьте подключение к интернету и обновите страницу</p>
+                        <button onclick="location.reload()" class="btn-submit" style="margin-top: 20px;">Обновить страницу</button>
+                    </div>
+                `;
+            }
+        });
+        
+        // Загружаем фильтры (не критично)
+        await Promise.race([
+            loadDisciplineFilters(),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Таймаут загрузки фильтров')), 5000))
+        ]).catch(err => {
+            console.warn('⚠️ Ошибка загрузки фильтров:', err);
+        });
+        
+        // Загружаем социальные ссылки (не критично)
+        await Promise.race([
+            loadSocialLinks(),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Таймаут загрузки ссылок')), 5000))
+        ]).catch(err => {
+            console.warn('⚠️ Ошибка загрузки социальных ссылок:', err);
+        });
+        
+        clearTimeout(loaderTimeout);
+        hideLoader();
+        console.log('✅ Страница архива загружена');
+    } catch (error) {
+        console.error('❌ Критическая ошибка инициализации:', error);
+        clearTimeout(loaderTimeout);
+        hideLoader();
+        
+        // Показываем сообщение об ошибке
+        const grid = document.getElementById('archive-grid');
+        if (grid && grid.innerHTML.trim() === '') {
+            grid.innerHTML = `
+                <div class="empty-state">
+                    <h3>Ошибка загрузки</h3>
+                    <p>Не удалось загрузить данные. Пожалуйста, обновите страницу.</p>
+                    <button onclick="location.reload()" class="btn-submit" style="margin-top: 20px;">Обновить страницу</button>
+                </div>
+            `;
+        }
+    }
 }
 
 // Запускаем при загрузке страницы

@@ -31,11 +31,69 @@ function formatDateForDisplay(dateStr) {
 // Функция инициализации страницы
 async function initializeMainPage() {
     console.log('🚀 Инициализация главной страницы...');
-    await loadActiveTournaments();
-    await loadSocialLinks();
-    await loadDisciplineFilters();
-    hideLoader();
-    console.log('✅ Главная страница загружена');
+    
+    // Устанавливаем таймаут для принудительного скрытия loader (10 секунд)
+    const loaderTimeout = setTimeout(() => {
+        console.warn('⚠️ Таймаут загрузки - принудительно скрываем loader');
+        hideLoader();
+    }, 10000);
+    
+    try {
+        // Загружаем данные с таймаутами для каждого запроса
+        await Promise.race([
+            loadActiveTournaments(),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Таймаут загрузки турниров')), 8000))
+        ]).catch(err => {
+            console.error('❌ Ошибка загрузки турниров:', err);
+            // Показываем сообщение об ошибке
+            const grid = document.getElementById('tournaments-grid');
+            if (grid) {
+                grid.innerHTML = `
+                    <div class="empty-state">
+                        <h3>Ошибка загрузки турниров</h3>
+                        <p>Проверьте подключение к интернету и обновите страницу</p>
+                        <button onclick="location.reload()" class="btn-submit" style="margin-top: 20px;">Обновить страницу</button>
+                    </div>
+                `;
+            }
+        });
+        
+        // Загружаем социальные ссылки (не критично, можно пропустить)
+        await Promise.race([
+            loadSocialLinks(),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Таймаут загрузки ссылок')), 5000))
+        ]).catch(err => {
+            console.warn('⚠️ Ошибка загрузки социальных ссылок:', err);
+        });
+        
+        // Загружаем фильтры (не критично, можно пропустить)
+        await Promise.race([
+            loadDisciplineFilters(),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Таймаут загрузки фильтров')), 5000))
+        ]).catch(err => {
+            console.warn('⚠️ Ошибка загрузки фильтров:', err);
+        });
+        
+        clearTimeout(loaderTimeout);
+        hideLoader();
+        console.log('✅ Главная страница загружена');
+    } catch (error) {
+        console.error('❌ Критическая ошибка инициализации:', error);
+        clearTimeout(loaderTimeout);
+        hideLoader();
+        
+        // Показываем сообщение об ошибке
+        const grid = document.getElementById('tournaments-grid');
+        if (grid && grid.innerHTML.trim() === '') {
+            grid.innerHTML = `
+                <div class="empty-state">
+                    <h3>Ошибка загрузки</h3>
+                    <p>Не удалось загрузить данные. Пожалуйста, обновите страницу.</p>
+                    <button onclick="location.reload()" class="btn-submit" style="margin-top: 20px;">Обновить страницу</button>
+                </div>
+            `;
+        }
+    }
 }
 
 // Запускаем при загрузке страницы

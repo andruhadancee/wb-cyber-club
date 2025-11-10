@@ -7,43 +7,89 @@ let selectedDisciplineTeams = 'all';
 async function initializeTeamsPage() {
     console.log('🚀 Инициализация страницы команд...');
     
-    // Сначала загружаем турниры
-    const tournaments = await API.tournaments.getAll('active');
-    console.log('Tournaments loaded:', tournaments);
+    // Устанавливаем таймаут для принудительного скрытия loader (10 секунд)
+    const loaderTimeout = setTimeout(() => {
+        console.warn('⚠️ Таймаут загрузки - принудительно скрываем loader');
+        hideLoader();
+    }, 10000);
     
-    // Затем загружаем команды
-    allTeamsData = await API.teams.getAll();
-    console.log('Teams data loaded:', allTeamsData);
-    
-    // Добавляем информацию о дисциплине к командам
-    if (tournaments && allTeamsData) {
-        Object.keys(allTeamsData).forEach(tournamentId => {
-            const tournament = tournaments.find(t => t.id == tournamentId);
-            if (tournament && allTeamsData[tournamentId]) {
-                allTeamsData[tournamentId].forEach(team => {
-                    if (!team.discipline && tournament.discipline) {
-                        team.discipline = tournament.discipline;
-                    }
-                    if (!team.title && tournament.title) {
-                        team.title = tournament.title;
-                    }
-                });
-            }
+    try {
+        // Сначала загружаем турниры
+        const tournaments = await Promise.race([
+            API.tournaments.getAll('active'),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Таймаут загрузки турниров')), 8000))
+        ]).catch(err => {
+            console.error('❌ Ошибка загрузки турниров:', err);
+            return [];
         });
+        console.log('Tournaments loaded:', tournaments);
+        
+        // Затем загружаем команды
+        allTeamsData = await Promise.race([
+            API.teams.getAll(),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Таймаут загрузки команд')), 8000))
+        ]).catch(err => {
+            console.error('❌ Ошибка загрузки команд:', err);
+            return {};
+        });
+        console.log('Teams data loaded:', allTeamsData);
+        
+        // Добавляем информацию о дисциплине к командам
+        if (tournaments && allTeamsData) {
+            Object.keys(allTeamsData).forEach(tournamentId => {
+                const tournament = tournaments.find(t => t.id == tournamentId);
+                if (tournament && allTeamsData[tournamentId]) {
+                    allTeamsData[tournamentId].forEach(team => {
+                        if (!team.discipline && tournament.discipline) {
+                            team.discipline = tournament.discipline;
+                        }
+                        if (!team.title && tournament.title) {
+                            team.title = tournament.title;
+                        }
+                    });
+                }
+            });
+        }
+        
+        // Теперь загружаем фильтры дисциплин (не критично)
+        await Promise.race([
+            loadDisciplineFilters(),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Таймаут загрузки фильтров')), 5000))
+        ]).catch(err => {
+            console.warn('⚠️ Ошибка загрузки фильтров:', err);
+        });
+        
+        // И загружаем социальные ссылки (не критично)
+        await Promise.race([
+            loadSocialLinks(),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Таймаут загрузки ссылок')), 5000))
+        ]).catch(err => {
+            console.warn('⚠️ Ошибка загрузки социальных ссылок:', err);
+        });
+        
+        // Показываем команды
+        displayFilteredTeams();
+        
+        clearTimeout(loaderTimeout);
+        hideLoader();
+        console.log('✅ Страница команд загружена');
+    } catch (error) {
+        console.error('❌ Критическая ошибка инициализации:', error);
+        clearTimeout(loaderTimeout);
+        hideLoader();
+        
+        // Показываем сообщение об ошибке
+        const container = document.getElementById('teams-container');
+        if (container && container.innerHTML.trim() === '') {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <h3>Ошибка загрузки</h3>
+                    <p>Не удалось загрузить данные. Пожалуйста, обновите страницу.</p>
+                    <button onclick="location.reload()" class="btn-submit" style="margin-top: 20px;">Обновить страницу</button>
+                </div>
+            `;
+        }
     }
-    
-    // Теперь загружаем фильтры дисциплин
-    await loadDisciplineFilters();
-    
-    // И загружаем социальные ссылки
-    await loadSocialLinks();
-    
-    // Показываем команды
-    displayFilteredTeams();
-    
-    // Скрываем загрузчик
-    hideLoader();
-    console.log('✅ Страница команд загружена');
 }
 
 // Запускаем при загрузке страницы
