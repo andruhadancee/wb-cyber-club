@@ -19,6 +19,24 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
+// Basic Auth для dev-стенда (DEV_AUTH=true)
+if (process.env.DEV_AUTH === 'true') {
+  const devUser = process.env.DEV_USER || 'dev';
+  const devPass = process.env.DEV_PASS || 'dev123';
+  app.use((req, res, next) => {
+    const auth = req.headers.authorization;
+    if (!auth || !auth.startsWith('Basic ')) {
+      res.setHeader('WWW-Authenticate', 'Basic realm="Dev"');
+      return res.status(401).send('Authorization required');
+    }
+    const [user, pass] = Buffer.from(auth.split(' ')[1], 'base64').toString().split(':');
+    if (user === devUser && pass === devPass) return next();
+    res.setHeader('WWW-Authenticate', 'Basic realm="Dev"');
+    return res.status(401).send('Invalid credentials');
+  });
+  console.log(`[DEV] Basic Auth enabled (user: ${devUser})`);
+}
+
 // API routes
 app.use('/api/tournaments', tournamentsRouter);
 app.use('/api/teams', teamsRouter);
