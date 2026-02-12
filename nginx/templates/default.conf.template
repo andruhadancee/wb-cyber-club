@@ -83,9 +83,9 @@ server {
         proxy_buffer_size 8k;
         proxy_buffers 8 16k;
 
-        # Cache GET requests for 10s (thundering herd protection)
+        # Cache GET requests for 30s (thundering herd + performance)
         proxy_cache api_cache;
-        proxy_cache_valid 200 10s;
+        proxy_cache_valid 200 30s;
         proxy_cache_methods GET HEAD;
         proxy_cache_key "$request_method$request_uri";
         proxy_cache_use_stale error timeout updating http_500 http_502 http_503;

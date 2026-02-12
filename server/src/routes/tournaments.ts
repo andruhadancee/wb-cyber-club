@@ -2,10 +2,11 @@ import { Router } from 'express';
 import * as tournamentService from '../services/tournament.service';
 import { validate } from '../middleware/validate';
 import { createTournamentSchema, updateTournamentSchema } from '../schemas/tournament.schema';
+import { cacheMiddleware } from '../cache';
 
 const router = Router();
 
-router.get('/', async (req, res, next) => {
+router.get('/', cacheMiddleware(30_000), async (req, res, next) => {
   try {
     const status = req.query.status as string | undefined;
     const tournaments = await tournamentService.getAll(status);

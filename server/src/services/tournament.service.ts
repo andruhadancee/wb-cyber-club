@@ -30,41 +30,53 @@ export async function getAll(status?: string): Promise<Tournament[]> {
     return dateA.getTime() - dateB.getTime();
   });
 
-  // Batch-create missing calendar events for active tournaments
-  const active = tournaments.filter((t) => t.status === 'active' && t.date);
-  if (active.length > 0) {
-    const ids = active.map((t) => t.id);
-    const existing = await prisma.calendarEvent.findMany({
-      where: { tournament_id: { in: ids } },
-      select: { tournament_id: true },
-    });
-    const existingIds = new Set(existing.map((e) => e.tournament_id));
+  // Fire-and-forget: sync calendar events in background (don't block response)
+  syncCalendarEvents(tournaments).catch((err) =>
+    console.error('[tournament.getAll] calendar sync error:', err),
+  );
 
-    for (const t of active.filter((t) => !existingIds.has(t.id))) {
-      const eventDate = parseRussianDateToISO(t.date);
-      if (eventDate) {
-        try {
-          await prisma.calendarEvent.create({
-            data: {
-              title: t.title,
-              event_date: new Date(eventDate),
-              discipline: t.discipline,
-              prize: t.prize,
-              max_teams: t.max_teams,
-              custom_link: t.custom_link,
-              tournament_id: t.id,
-              start_time: t.start_time,
-              watch_url: t.watch_url,
-            },
-          });
-        } catch (err) {
-          console.error(`Error creating calendar event for tournament ${t.id}:`, err);
-        }
+  return tournaments;
+}
+
+/**
+ * Create missing calendar events for active tournaments.
+ * Runs in background — does not block the GET response.
+ */
+async function syncCalendarEvents(tournaments: Tournament[]): Promise<void> {
+  const active = tournaments.filter((t) => t.status === 'active' && t.date);
+  if (active.length === 0) return;
+
+  const ids = active.map((t) => t.id);
+  const existing = await prisma.calendarEvent.findMany({
+    where: { tournament_id: { in: ids } },
+    select: { tournament_id: true },
+  });
+  const existingIds = new Set(existing.map((e) => e.tournament_id));
+  const missing = active.filter((t) => !existingIds.has(t.id));
+  if (missing.length === 0) return;
+
+  for (const t of missing) {
+    const eventDate = parseRussianDateToISO(t.date);
+    if (eventDate) {
+      try {
+        await prisma.calendarEvent.create({
+          data: {
+            title: t.title,
+            event_date: new Date(eventDate),
+            discipline: t.discipline,
+            prize: t.prize,
+            max_teams: t.max_teams,
+            custom_link: t.custom_link,
+            tournament_id: t.id,
+            start_time: t.start_time,
+            watch_url: t.watch_url,
+          },
+        });
+      } catch (err) {
+        console.error(`Error creating calendar event for tournament ${t.id}:`, err);
       }
     }
   }
-
-  return tournaments;
 }
 
 export async function create(data: CreateTournamentInput): Promise<Tournament> {

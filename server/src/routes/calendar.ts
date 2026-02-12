@@ -2,10 +2,11 @@ import { Router } from 'express';
 import * as calendarService from '../services/calendar.service';
 import { validate } from '../middleware/validate';
 import { createCalendarEventSchema, updateCalendarEventSchema } from '../schemas/calendar.schema';
+import { cacheMiddleware } from '../cache';
 
 const router = Router();
 
-router.get('/', async (req, res, next) => {
+router.get('/', cacheMiddleware(30_000), async (req, res, next) => {
   try {
     const month = req.query.month as string | undefined;
     const events = await calendarService.getAll(month);

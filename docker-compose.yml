@@ -21,8 +21,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.5'
-          memory: 128M
+          cpus: '1.0'
+          memory: 256M
 
   # ── Certbot (SSL-сертификаты Let's Encrypt) ──
   certbot:
@@ -61,8 +61,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1.0'
-          memory: 512M
+          cpus: '2.0'
+          memory: 768M
 
   # ── PostgreSQL ──
   postgres:
@@ -87,8 +87,16 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.5'
-          memory: 256M
+          cpus: '1.0'
+          memory: 512M
+    # Performance tuning
+    command: >
+      postgres
+      -c shared_buffers=128MB
+      -c effective_cache_size=256MB
+      -c work_mem=4MB
+      -c maintenance_work_mem=64MB
+      -c max_connections=50
 
 networks:
   backend:
