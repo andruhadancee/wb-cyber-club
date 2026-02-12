@@ -5,21 +5,24 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import 'dayjs/locale/ru';
 import { ThemeProvider } from '@/shared/theme';
 import { ConfirmDialog } from '@/shared/ui/confirm-dialog/ConfirmDialog';
+import { ErrorBoundary } from '@/shared/ui/error-boundary/ErrorBoundary';
 import { router } from './router';
 
 export function App() {
   return (
-    <ThemeProvider>
-      <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="ru">
-        <SnackbarProvider
-          maxSnack={3}
-          autoHideDuration={3000}
-          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-        >
-          <RouterProvider router={router} />
-          <ConfirmDialog />
-        </SnackbarProvider>
-      </LocalizationProvider>
-    </ThemeProvider>
+    <ErrorBoundary>
+      <ThemeProvider>
+        <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="ru">
+          <SnackbarProvider
+            maxSnack={3}
+            autoHideDuration={3000}
+            anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+          >
+            <RouterProvider router={router} />
+            <ConfirmDialog />
+          </SnackbarProvider>
+        </LocalizationProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 }

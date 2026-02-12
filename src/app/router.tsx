@@ -5,6 +5,7 @@ import { TeamsPage } from '@/pages/teams/TeamsPage';
 import { ArchivePage } from '@/pages/archive/ArchivePage';
 import { CalendarPage } from '@/pages/calendar/CalendarPage';
 import { RegulationsPage } from '@/pages/regulations/RegulationsPage';
+import { NotFoundPage } from '@/pages/not-found/NotFoundPage';
 import { AdminPage } from '@/pages/admin/AdminPage';
 
 export const router = createBrowserRouter([
@@ -16,6 +17,7 @@ export const router = createBrowserRouter([
       { path: '/archive', element: <ArchivePage /> },
       { path: '/calendar', element: <CalendarPage /> },
       { path: '/regulations', element: <RegulationsPage /> },
+      { path: '*', element: <NotFoundPage /> },
     ],
   },
   {

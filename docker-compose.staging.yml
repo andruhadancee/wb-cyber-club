@@ -1,0 +1,37 @@
+# ── Dev/Staging стек ──
+# Запуск: docker compose -f docker-compose.staging.yml up -d --build
+# Доступ: http://IP:3001
+
+services:
+  # ── App (Express + React static) ──
+  app-staging:
+    build: .
+    ports:
+      - "3001:3000"
+    environment:
+      - DATABASE_URL=postgresql://cyberclub:cyberclub@postgres-staging:5432/cyberclub
+      - PORT=3000
+    depends_on:
+      postgres-staging:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ── PostgreSQL (отдельный от прода) ──
+  postgres-staging:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_USER=cyberclub
+      - POSTGRES_PASSWORD=cyberclub
+      - POSTGRES_DB=cyberclub
+    volumes:
+      - pgdata_staging:/var/lib/postgresql/data
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cyberclub"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  pgdata_staging:
