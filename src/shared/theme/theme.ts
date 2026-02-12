@@ -8,6 +8,9 @@ const SECONDARY = '#ec4899';
 const SECONDARY_LIGHT = '#f472b6';
 
 const commonOptions: ThemeOptions = {
+  breakpoints: {
+    values: { xs: 0, sm: 600, md: 900, lg: 1200, xl: 1920 },
+  },
   typography: {
     fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
     h1: { fontWeight: 800, letterSpacing: '-0.025em' },

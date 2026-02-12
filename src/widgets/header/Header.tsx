@@ -57,7 +57,7 @@ export const Header = memo(function Header() {
     <AppBar position="sticky" elevation={0}>
       <Toolbar
         sx={{
-          maxWidth: 1200,
+          maxWidth: 1920,
           width: '100%',
           mx: 'auto',
           px: { xs: 2, md: 3 },
@@ -212,9 +212,6 @@ export const Header = memo(function Header() {
         <Box sx={{ p: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
             <Box component="img" src="/images/cyberclub-logo.png" alt="" sx={{ height: 24 }} />
-            <Typography variant="subtitle2" fontWeight={700} color="text.primary">
-              CYBER CLUB
-            </Typography>
           </Box>
           <IconButton
             onClick={handleDrawerToggle}

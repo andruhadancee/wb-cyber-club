@@ -14,9 +14,9 @@ export function AppLayout() {
       <VideoBackground/>
       <Header />
       <Container
-        maxWidth="lg"
+        maxWidth="xl"
         component="main"
-        sx={{ flex: 1, py: 4, px: { xs: 2, md: 3 } }}
+        sx={{ flex: 1, py: 4, px: { xs: 2, md: 3, xl: 4 } }}
       >
         <Outlet />
       </Container>

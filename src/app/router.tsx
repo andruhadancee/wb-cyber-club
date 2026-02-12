@@ -22,6 +22,9 @@ const RegulationsPage = lazy(() =>
 const NotFoundPage = lazy(() =>
   import('@/pages/not-found/NotFoundPage').then((m) => ({ default: m.NotFoundPage })),
 );
+const BracketPage = lazy(() =>
+  import('@/pages/bracket/BracketPage').then((m) => ({ default: m.BracketPage })),
+);
 const AdminPage = lazy(() =>
   import('@/pages/admin/AdminPage').then((m) => ({ default: m.AdminPage })),
 );
@@ -39,6 +42,7 @@ export const router = createBrowserRouter([
       { path: '/archive', element: <SuspenseWrapper><ArchivePage /></SuspenseWrapper> },
       { path: '/calendar', element: <SuspenseWrapper><CalendarPage /></SuspenseWrapper> },
       { path: '/regulations', element: <SuspenseWrapper><RegulationsPage /></SuspenseWrapper> },
+      { path: '/tournament/:id/bracket', element: <SuspenseWrapper><BracketPage /></SuspenseWrapper> },
       { path: '*', element: <SuspenseWrapper><NotFoundPage /></SuspenseWrapper> },
     ],
   },

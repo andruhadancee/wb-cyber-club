@@ -1,18 +1,28 @@
 import { z } from 'zod';
 
+const safeUrl = z
+  .string()
+  .refine((v) => !v || !v.startsWith('data:'), { message: 'Base64 data URIs не допускаются' })
+  .nullish();
+
+const timeString = z
+  .string()
+  .refine((v) => !v || /^\d{1,2}:\d{2}$/.test(v.trim()), { message: 'Формат времени: HH:mm' })
+  .nullish();
+
 export const createTournamentSchema = z.object({
   title: z.string().min(1),
   discipline: z.string().min(1),
   date: z.string().min(1),
   prize: z.string().min(1),
   maxTeams: z.number().int().positive(),
-  customLink: z.string().nullish(),
+  customLink: safeUrl,
   status: z.string().default('active'),
   winner: z.string().nullish(),
-  watchUrl: z.string().nullish(),
+  watchUrl: safeUrl,
   description: z.string().nullish(),
-  imageUrl: z.string().nullish(),
-  startTime: z.string().nullish(),
+  imageUrl: safeUrl,
+  startTime: timeString,
   teams: z.number().int().optional(),
 });
 

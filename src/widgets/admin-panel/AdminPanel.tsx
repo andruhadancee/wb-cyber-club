@@ -30,11 +30,13 @@ import CategoryIcon from '@mui/icons-material/Category';
 import LinkIcon from '@mui/icons-material/Link';
 import DescriptionIcon from '@mui/icons-material/Description';
 import ShareIcon from '@mui/icons-material/Share';
+import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import { useTournamentStore } from '@/entities/tournament/model';
 import { useTeamStore } from '@/entities/team/model';
 import { useDisciplineStore } from '@/entities/discipline/model';
 import { useCalendarStore } from '@/entities/calendar-event/model';
 import { useRegulationStore } from '@/entities/regulation/model';
+import { useBracketStore } from '@/entities/bracket/model';
 import { clearCache } from '@/shared/lib/cache';
 import { Modal } from '@/shared/ui/modal/Modal';
 import { showSuccess, showError } from '@/shared/lib/toast';
@@ -48,6 +50,8 @@ import { LinksForm } from '@/features/admin-forms/links-form/LinksForm';
 import { SocialForm } from '@/features/admin-forms/social-form/SocialForm';
 import { DisciplineFilter } from '@/features/discipline-filter/DisciplineFilter';
 import { CalendarGrid } from '@/widgets/calendar-grid/CalendarGrid';
+import { BracketView } from '@/shared/ui/bracket/BracketView';
+import { AdminBracketTab } from '@/features/admin-bracket/AdminBracketTab';
 import { linksApi } from '@/shared/api/linksApi';
 import type { Tournament } from '@/entities/tournament/types';
 import type { Team } from '@/entities/team/types';
@@ -55,13 +59,14 @@ import type { CalendarEvent } from '@/entities/calendar-event/types';
 import type { Regulation } from '@/entities/regulation/types';
 import type { Discipline } from '@/entities/discipline/types';
 
-const TAB_KEYS = ['active', 'past', 'teams', 'calendar', 'disciplines', 'links', 'regulations', 'social'] as const;
+const TAB_KEYS = ['active', 'past', 'teams', 'brackets', 'calendar', 'disciplines', 'links', 'regulations', 'social'] as const;
 type TabName = (typeof TAB_KEYS)[number];
 
 const TAB_CONFIG: Record<TabName, { label: string; icon: React.ReactElement }> = {
   active: { label: 'Активные', icon: <EmojiEventsIcon fontSize="small" /> },
   past: { label: 'Архив', icon: <HistoryIcon fontSize="small" /> },
   teams: { label: 'Команды', icon: <GroupsIcon fontSize="small" /> },
+  brackets: { label: 'Сетки', icon: <AccountTreeIcon fontSize="small" /> },
   calendar: { label: 'Календарь', icon: <CalendarMonthIcon fontSize="small" /> },
   disciplines: { label: 'Дисциплины', icon: <CategoryIcon fontSize="small" /> },
   links: { label: 'Ссылки', icon: <LinkIcon fontSize="small" /> },
@@ -527,6 +532,11 @@ export function AdminPanel() {
     active: () => renderTournamentTable(tournamentStore.activeTournaments, false),
     past: () => renderTournamentTable(tournamentStore.pastTournaments, true),
     teams: renderTeams,
+    brackets: () => (
+      <AdminBracketTab
+        tournaments={[...tournamentStore.activeTournaments, ...tournamentStore.pastTournaments]}
+      />
+    ),
     calendar: renderCalendar,
     disciplines: renderDisciplines,
     links: () => <LinksForm />,

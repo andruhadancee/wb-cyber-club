@@ -1,9 +1,13 @@
 import express from 'express';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import cors from 'cors';
 import compression from 'compression';
 import helmet from 'helmet';
 import type { Server } from 'http';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 import { config } from './config';
 import { devBasicAuth } from './middleware/auth';

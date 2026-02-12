@@ -143,7 +143,7 @@ function AdminContent() {
       {authorized && (
         <>
           <AppBar position="sticky" elevation={0}>
-            <Toolbar sx={{ maxWidth: 1200, width: '100%', mx: 'auto' }}>
+            <Toolbar sx={{ maxWidth: 1920, width: '100%', mx: 'auto' }}>
               <Box
                 component={NavLink}
                 to="/"
@@ -175,7 +175,7 @@ function AdminContent() {
             </Toolbar>
           </AppBar>
 
-          <Container maxWidth="lg" sx={{ flex: 1, py: 3, ...pageEntrance }}>
+          <Container maxWidth="xl" sx={{ flex: 1, py: 3, px: { xs: 2, md: 3, xl: 4 }, ...pageEntrance }}>
             <AdminPanel />
           </Container>
         </>

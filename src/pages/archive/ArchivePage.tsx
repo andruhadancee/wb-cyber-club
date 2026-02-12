@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo, memo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid';
@@ -12,6 +13,7 @@ import Divider from '@mui/material/Divider';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import HistoryIcon from '@mui/icons-material/History';
+import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import { useTournamentStore } from '@/entities/tournament/model';
 import { useDisciplineStore } from '@/entities/discipline/model';
 import { DisciplineFilter } from '@/features/discipline-filter/DisciplineFilter';
@@ -76,6 +78,7 @@ export function ArchivePage() {
 }
 
 const ArchiveCard = memo(function ArchiveCard({ tournament, index = 0 }: { tournament: Tournament; index?: number }) {
+  const navigate = useNavigate();
   const watchUrl = tournament.watch_url?.trim() || null;
   const imageUrl = tournament.image_url?.trim() || null;
   const iconUrl = getDisciplineIconUrl(tournament.discipline);
@@ -134,19 +137,29 @@ const ArchiveCard = memo(function ArchiveCard({ tournament, index = 0 }: { tourn
           />
         )}
 
-        {watchUrl && (
+        <Box sx={{ display: 'flex', gap: 1, mt: 2, flexWrap: 'wrap' }}>
           <Button
             variant="outlined"
-            startIcon={<PlayArrowIcon />}
-            href={watchUrl}
-            target="_blank"
-            rel="noopener noreferrer"
+            startIcon={<AccountTreeIcon />}
+            onClick={() => navigate(`/tournament/${tournament.id}/bracket`)}
             size="small"
-            sx={{ mt: 2 }}
+            sx={{ textTransform: 'none', fontSize: '0.78rem' }}
           >
-            Смотреть
+            Сетка
           </Button>
-        )}
+          {watchUrl && (
+            <Button
+              variant="outlined"
+              startIcon={<PlayArrowIcon />}
+              href={watchUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              size="small"
+            >
+              Смотреть
+            </Button>
+          )}
+        </Box>
       </CardContent>
     </Card>
   );

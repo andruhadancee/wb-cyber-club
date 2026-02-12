@@ -25,8 +25,9 @@ model Tournament {
   created_at        DateTime? @default(now())
   updated_at        DateTime? @default(now())
 
-  calendar_events CalendarEvent[]
+  calendar_events  CalendarEvent[]
   registered_teams RegisteredTeam[]
+  bracket_matches  BracketMatch[]
 
   @@index([status], name: "idx_tournaments_status")
   @@index([discipline], name: "idx_tournaments_discipline")
@@ -97,10 +98,45 @@ model RegisteredTeam {
   registration_date String   @db.VarChar(100)
   created_at        DateTime? @default(now())
 
-  tournament Tournament? @relation(fields: [tournament_id], references: [id], onDelete: Cascade)
+  tournament        Tournament? @relation(fields: [tournament_id], references: [id], onDelete: Cascade)
+
+  bracket_as_team1  BracketMatch[] @relation("BracketTeam1")
+  bracket_as_team2  BracketMatch[] @relation("BracketTeam2")
+  bracket_as_winner BracketMatch[] @relation("BracketWinner")
 
   @@index([tournament_id], name: "idx_teams_tournament")
   @@map("registered_teams")
+}
+
+model BracketMatch {
+  id            Int       @id @default(autoincrement())
+  tournament_id Int
+  round         Int
+  position      Int
+
+  team1_id      Int?
+  team2_id      Int?
+  winner_id     Int?
+
+  team1_name    String?   @db.VarChar(255)
+  team2_name    String?   @db.VarChar(255)
+  winner_name   String?   @db.VarChar(255)
+
+  score1        Int?
+  score2        Int?
+  status        String    @default("pending") @db.VarChar(20)
+  bracket_side  String    @default("upper") @db.VarChar(20)
+  scheduled_at  DateTime?
+  created_at    DateTime? @default(now())
+  updated_at    DateTime? @default(now())
+
+  tournament Tournament     @relation(fields: [tournament_id], references: [id], onDelete: Cascade)
+  team1      RegisteredTeam? @relation("BracketTeam1", fields: [team1_id], references: [id], onDelete: SetNull)
+  team2      RegisteredTeam? @relation("BracketTeam2", fields: [team2_id], references: [id], onDelete: SetNull)
+  winner     RegisteredTeam? @relation("BracketWinner", fields: [winner_id], references: [id], onDelete: SetNull)
+
+  @@index([tournament_id], name: "idx_bracket_tournament")
+  @@map("bracket_matches")
 }
 
 model Regulation {

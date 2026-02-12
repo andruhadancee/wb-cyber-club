@@ -1,4 +1,5 @@
 import { memo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import Typography from '@mui/material/Typography';
@@ -6,10 +7,11 @@ import Chip from '@mui/material/Chip';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Divider from '@mui/material/Divider';
+import Button from '@mui/material/Button';
 import GroupsIcon from '@mui/icons-material/Groups';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
-import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import { CountdownTimer } from '@/features/countdown-timer/CountdownTimer';
 import { TournamentButton } from '@/features/tournament-button/TournamentButton';
 import { getDisciplineIconUrl } from '@/shared/lib/discipline-icons';
@@ -24,7 +26,12 @@ interface Props {
 }
 
 export const TournamentCard = memo(function TournamentCard({ tournament, regLink, index = 0 }: Props) {
+  const navigate = useNavigate();
   const iconUrl = getDisciplineIconUrl(tournament.discipline);
+
+  const handleBracketClick = () => {
+    navigate(`/tournament/${tournament.id}/bracket`);
+  };
 
   return (
     <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column', ...staggerItem(index) }}>
@@ -78,6 +85,19 @@ export const TournamentCard = memo(function TournamentCard({ tournament, regLink
             </Box>
           </InfoRow>
         </Stack>
+
+        {/* Bracket + Registration buttons */}
+        <Box sx={{ display: 'flex', gap: 1, mt: 2, mb: 1 }}>
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<AccountTreeIcon />}
+            onClick={handleBracketClick}
+            sx={{ textTransform: 'none', flex: 1, fontSize: '0.78rem' }}
+          >
+            Сетка
+          </Button>
+        </Box>
 
         <TournamentButton
           date={tournament.date}

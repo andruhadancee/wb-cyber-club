@@ -10,6 +10,22 @@ function invalidateTournamentCaches(): void {
   cacheInvalidate('route:/api/calendar');
 }
 
+/** Parse "HH:mm" string into a valid Date or null */
+function parseStartTime(value: string | null | undefined): Date | null {
+  if (!value || !value.trim()) return null;
+  const match = value.trim().match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) return null;
+  const d = new Date(`1970-01-01T${value.trim()}:00`);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+/** Sanitise URL-like field: reject base64 data URIs and empty strings */
+function sanitiseUrl(value: string | null | undefined): string | null {
+  if (!value || !value.trim()) return null;
+  if (value.startsWith('data:')) return null;
+  return value.trim();
+}
+
 export async function getAll(status?: string): Promise<Tournament[]> {
   const where = status ? { status } : {};
   const tournaments = await prisma.tournament.findMany({
@@ -89,13 +105,13 @@ export async function create(data: CreateTournamentInput): Promise<Tournament> {
       date: data.date,
       prize: data.prize,
       max_teams: data.maxTeams,
-      custom_link: data.customLink || null,
+      custom_link: sanitiseUrl(data.customLink),
       status: data.status || 'active',
       winner: data.winner || null,
       teams: teamsCount,
-      watch_url: data.watchUrl || null,
-      start_time: data.startTime ? new Date(`1970-01-01T${data.startTime}`) : null,
-      image_url: data.imageUrl || null,
+      watch_url: sanitiseUrl(data.watchUrl),
+      start_time: parseStartTime(data.startTime),
+      image_url: sanitiseUrl(data.imageUrl),
     },
   });
 
@@ -112,14 +128,14 @@ export async function create(data: CreateTournamentInput): Promise<Tournament> {
             title: data.title,
             description: data.description || null,
             event_date: new Date(eventDate),
-            image_url: data.imageUrl || null,
+            image_url: sanitiseUrl(data.imageUrl),
             discipline: data.discipline,
             prize: data.prize,
             max_teams: data.maxTeams,
-            custom_link: data.customLink || null,
+            custom_link: sanitiseUrl(data.customLink),
             tournament_id: tournament.id,
-            start_time: data.startTime ? new Date(`1970-01-01T${data.startTime}`) : null,
-            watch_url: data.watchUrl || null,
+            start_time: parseStartTime(data.startTime),
+            watch_url: sanitiseUrl(data.watchUrl),
           },
         });
       }
@@ -137,12 +153,12 @@ export async function update(data: UpdateTournamentInput): Promise<Tournament> {
     date: data.date,
     prize: data.prize,
     max_teams: data.maxTeams,
-    custom_link: data.customLink || null,
+    custom_link: sanitiseUrl(data.customLink),
     status: data.status,
     winner: data.winner || null,
-    watch_url: data.watchUrl || null,
-    start_time: data.startTime ? new Date(`1970-01-01T${data.startTime}`) : null,
-    image_url: data.imageUrl || null,
+    watch_url: sanitiseUrl(data.watchUrl),
+    start_time: parseStartTime(data.startTime),
+    image_url: sanitiseUrl(data.imageUrl),
     updated_at: new Date(),
   };
 
@@ -167,13 +183,13 @@ export async function update(data: UpdateTournamentInput): Promise<Tournament> {
           title: data.title,
           description: data.description || null,
           event_date: new Date(eventDate),
-          image_url: data.imageUrl || null,
+          image_url: sanitiseUrl(data.imageUrl),
           discipline: data.discipline,
           prize: data.prize,
           max_teams: data.maxTeams,
-          custom_link: data.customLink || null,
-          start_time: data.startTime ? new Date(`1970-01-01T${data.startTime}`) : null,
-          watch_url: data.watchUrl || null,
+          custom_link: sanitiseUrl(data.customLink),
+          start_time: parseStartTime(data.startTime),
+          watch_url: sanitiseUrl(data.watchUrl),
           updated_at: new Date(),
         },
       });
