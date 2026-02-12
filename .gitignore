@@ -45,3 +45,4 @@ VERCEL-*.md
 # Неиспользуемые файлы
 firebase-config.js
 *.mp4
+!public/videos/bg.mp4
