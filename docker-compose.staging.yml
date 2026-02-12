@@ -11,13 +11,27 @@ services:
     environment:
       - DATABASE_URL=postgresql://cyberclub:cyberclub@postgres-dev:5432/cyberclub
       - PORT=3000
+      - NODE_ENV=development
       - DEV_AUTH=true
       - DEV_USER=dev
       - DEV_PASS=dev123
     depends_on:
       postgres-dev:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
     restart: unless-stopped
+    networks:
+      - dev
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
 
   # ── PostgreSQL (отдельный от прода) ──
   postgres-dev:
@@ -28,13 +42,26 @@ services:
       - POSTGRES_DB=cyberclub
     volumes:
       - pgdata_dev_staging:/var/lib/postgresql/data
-      - ./db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    # Порт НЕ открыт наружу — доступ только из Docker-сети
+    expose:
+      - "5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U cyberclub"]
       interval: 5s
       timeout: 3s
       retries: 5
     restart: unless-stopped
+    networks:
+      - dev
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+
+networks:
+  dev:
+    driver: bridge
 
 volumes:
   pgdata_dev_staging:

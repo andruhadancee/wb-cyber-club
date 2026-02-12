@@ -5,7 +5,36 @@ on:
     branches: [mvp]
 
 jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --registry=https://registry.npmjs.org/
+
+      - name: Generate Prisma client
+        run: npx prisma generate --schema=server/prisma/schema.prisma
+
+      - name: Typecheck frontend
+        run: npx tsc --noEmit
+
+      - name: Typecheck backend
+        run: npx tsc -p server/tsconfig.json --noEmit
+
+      - name: Build frontend
+        run: npx vite build
+
+      - name: Build backend
+        run: npx tsc -p server/tsconfig.json
+
   deploy:
+    needs: build
     runs-on: ubuntu-latest
     steps:
       - name: Deploy to server via SSH

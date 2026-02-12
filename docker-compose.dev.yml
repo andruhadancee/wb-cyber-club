@@ -1,5 +1,8 @@
+# ── Локальная разработка через Docker ──
+# Запуск: docker compose -f docker-compose.dev.yml up -d --build
+# Доступ: http://localhost:3000
+
 services:
-  # ── App (Express + React static) ──
   app:
     build: .
     ports:
@@ -7,12 +10,14 @@ services:
     environment:
       - DATABASE_URL=postgresql://cyberclub:cyberclub@postgres:5432/cyberclub
       - PORT=3000
+      - NODE_ENV=development
     depends_on:
       postgres:
         condition: service_healthy
     restart: unless-stopped
+    networks:
+      - local
 
-  # ── PostgreSQL ──
   postgres:
     image: postgres:16-alpine
     environment:
@@ -21,7 +26,6 @@ services:
       - POSTGRES_DB=cyberclub
     volumes:
       - pgdata_dev:/var/lib/postgresql/data
-      - ./db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
     ports:
       - "5432:5432"
     healthcheck:
@@ -30,6 +34,12 @@ services:
       timeout: 3s
       retries: 5
     restart: unless-stopped
+    networks:
+      - local
+
+networks:
+  local:
+    driver: bridge
 
 volumes:
   pgdata_dev:

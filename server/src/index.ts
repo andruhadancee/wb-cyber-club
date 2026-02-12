@@ -1,0 +1,104 @@
+import express from 'express';
+import path from 'path';
+import cors from 'cors';
+import compression from 'compression';
+import helmet from 'helmet';
+import type { Server } from 'http';
+
+import { config } from './config';
+import { devBasicAuth } from './middleware/auth';
+import { errorHandler } from './middleware/error-handler';
+import { apiLimiter, mutationLimiter } from './middleware/rate-limiter';
+import apiRouter from './routes';
+import prisma from './prisma';
+
+const app = express();
+
+// ── Security ──
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false,
+}));
+
+// ── Performance ──
+app.use(compression());
+
+// ── CORS ──
+const corsOrigin =
+  config.NODE_ENV === 'production' && config.DOMAIN
+    ? [`https://${config.DOMAIN}`, `https://www.${config.DOMAIN}`]
+    : '*';
+
+app.use(cors({ origin: corsOrigin }));
+app.use(express.json());
+
+// ── Rate limiting ──
+app.use('/api/', apiLimiter);
+app.use('/api/', (req, res, next) => {
+  if (['POST', 'PUT', 'DELETE'].includes(req.method)) {
+    return mutationLimiter(req, res, next);
+  }
+  next();
+});
+
+// ── Basic Auth for dev ──
+if (config.DEV_AUTH === 'true') {
+  app.use(devBasicAuth);
+  console.log(`[DEV] Basic Auth enabled (user: ${config.DEV_USER})`);
+}
+
+// ── API routes ──
+app.use('/api', apiRouter);
+
+// ── Serve static frontend (production) ──
+const distPath = path.join(__dirname, '..', '..', 'dist');
+app.use(express.static(distPath, {
+  maxAge: '1d',
+  etag: true,
+  lastModified: true,
+}));
+
+// ── SPA fallback ──
+app.get('*', (_req, res) => {
+  res.sendFile(path.join(distPath, 'index.html'));
+});
+
+// ── Error handler (must be last) ──
+app.use(errorHandler);
+
+// ── Start ──
+let server: Server;
+
+async function start(): Promise<void> {
+  try {
+    await prisma.$connect();
+    console.log('[DB] Connected');
+  } catch (error) {
+    console.error('[DB] Connection failed:', error);
+    process.exit(1);
+  }
+
+  server = app.listen(config.PORT, () => {
+    console.log(`Server running on http://localhost:${config.PORT} [${config.NODE_ENV}]`);
+  });
+}
+
+// ── Graceful shutdown ──
+async function shutdown(signal: string): Promise<void> {
+  console.log(`[SHUTDOWN] ${signal} received`);
+
+  if (server) {
+    server.close(() => {
+      console.log('[SHUTDOWN] HTTP server closed');
+    });
+  }
+
+  await prisma.$disconnect();
+  console.log('[SHUTDOWN] DB disconnected');
+  process.exit(0);
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
+
+start();

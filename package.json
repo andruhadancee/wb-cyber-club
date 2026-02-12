@@ -3,13 +3,20 @@
   "version": "2.0.0",
   "private": true,
   "type": "module",
+  "workspaces": [
+    "shared"
+  ],
   "description": "WB Cyber Club - Платформа киберспортивных турниров",
   "scripts": {
     "dev": "vite",
-    "dev:server": "node server/index.cjs",
+    "dev:server": "tsx watch server/src/index.ts",
     "build": "tsc -b && vite build",
-    "start": "node server/index.cjs",
-    "preview": "vite preview"
+    "build:server": "npx prisma generate --schema=server/prisma/schema.prisma && tsc -p server/tsconfig.json && echo {\"type\":\"commonjs\"} > server/dist/package.json",
+    "start": "node server/dist/index.js",
+    "preview": "vite preview",
+    "prisma:generate": "prisma generate --schema=server/prisma/schema.prisma",
+    "prisma:migrate": "prisma migrate dev --schema=server/prisma/schema.prisma",
+    "prisma:push": "prisma db push --schema=server/prisma/schema.prisma"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
@@ -18,12 +25,15 @@
     "@mui/icons-material": "^7.3.8",
     "@mui/material": "^7.3.8",
     "@mui/x-date-pickers": "^8.27.0",
+    "@prisma/client": "^6.19.2",
+    "compression": "^1.8.1",
     "cors": "^2.8.6",
     "dayjs": "^1.11.19",
     "dotenv": "^17.2.4",
     "express": "^4.22.1",
+    "express-rate-limit": "^8.2.1",
+    "helmet": "^8.1.0",
     "notistack": "^3.0.2",
-    "pg": "^8.11.3",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-hook-form": "^7.54.0",
@@ -32,9 +42,14 @@
     "zustand": "^5.0.0"
   },
   "devDependencies": {
+    "@types/compression": "^1.8.1",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.4",
+    "prisma": "^6.19.2",
+    "tsx": "^4.21.0",
     "typescript": "^5.6.3",
     "vite": "^6.0.0"
   }
