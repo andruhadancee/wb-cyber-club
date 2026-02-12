@@ -1,37 +1,38 @@
-import { useState, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
+import Box from '@mui/material/Box';
+import Container from '@mui/material/Container';
+import Typography from '@mui/material/Typography';
+import { useTheme } from '@mui/material/styles';
 import { Header } from '@/widgets/header/Header';
-import { ParticleBackground } from '@/shared/ui/particles/ParticleBackground';
-import { Loader } from '@/shared/ui/loader/Loader';
+import { VideoBackground } from '@/shared/ui/video-background/VideoBackground';
 
 export function AppLayout() {
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const timeout = setTimeout(() => setLoading(false), 10000);
-    // Скрыть лоадер, когда страница готова
-    const handleReady = () => {
-      clearTimeout(timeout);
-      setLoading(false);
-    };
-    window.addEventListener('app-ready', handleReady);
-    return () => {
-      clearTimeout(timeout);
-      window.removeEventListener('app-ready', handleReady);
-    };
-  }, []);
+  const theme = useTheme();
 
   return (
-    <>
-      {loading && <Loader text="Загрузка..." />}
-      <ParticleBackground />
+    <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      <VideoBackground/>
       <Header />
-      <main className="container">
-        <Outlet context={{ hideLoader: () => setLoading(false) }} />
-      </main>
-    </>
+      <Container
+        maxWidth="lg"
+        component="main"
+        sx={{ flex: 1, py: 4, px: { xs: 2, md: 3 } }}
+      >
+        <Outlet />
+      </Container>
+      <Box
+        component="footer"
+        sx={{
+          py: 3,
+          textAlign: 'center',
+          borderTop: `1px solid ${theme.palette.divider}`,
+          mt: 'auto',
+        }}
+      >
+        <Typography variant="caption" color="text.secondary">
+          WB Cyber Club &copy; {new Date().getFullYear()}
+        </Typography>
+      </Box>
+    </Box>
   );
 }
-
-/** Хук для скрытия лоадера из дочерних страниц */
-export { useOutletContext } from 'react-router-dom';

@@ -1,4 +1,20 @@
-import { useMemo, useState, useCallback } from 'react';
+import { useMemo, useState, useCallback, memo } from 'react';
+import Box from '@mui/material/Box';
+import Paper from '@mui/material/Paper';
+import Typography from '@mui/material/Typography';
+import IconButton from '@mui/material/IconButton';
+import Chip from '@mui/material/Chip';
+import Stack from '@mui/material/Stack';
+import Tooltip from '@mui/material/Tooltip';
+import Badge from '@mui/material/Badge';
+import Button from '@mui/material/Button';
+import Divider from '@mui/material/Divider';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import TodayIcon from '@mui/icons-material/Today';
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
+import { alpha, useTheme } from '@mui/material/styles';
 import { getDisciplineColor } from '@/shared/lib/discipline-colors';
 import { getDisciplineIconUrl } from '@/shared/lib/discipline-icons';
 import { formatLocalDate } from '@/shared/lib/date';
@@ -17,35 +33,25 @@ interface Props {
   registrationLinks: Record<string, string>;
   onPrevMonth: () => void;
   onNextMonth: () => void;
+  /** Callback при клике на день (для админки — создание события) */
+  onDayClick?: (dateStr: string) => void;
 }
+
+const WEEKDAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 
 function deduplicateEvents(events: CalendarEvent[]): CalendarEvent[] {
   const seen = new Set<string>();
   return events.filter((e) => {
     const key = e.tournament_id
       ? `tournament_${e.tournament_id}`
-      : `${e.title}_${(e.event_date).slice(0, 10)}`;
+      : `${e.title}_${e.event_date.slice(0, 10)}`;
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
   });
 }
 
-function isTournamentActive(event: CalendarEvent): boolean {
-  if (!event.start_time) return false;
-  try {
-    const dateStr = (event.event_date).slice(0, 10);
-    const [year, month, day] = dateStr.split('-').map(Number);
-    const m = event.start_time.match(/(\d{1,2}):(\d{2})/);
-    if (!m) return false;
-    const start = new Date(year, month - 1, day, +m[1], +m[2], 0);
-    return Date.now() >= start.getTime();
-  } catch {
-    return false;
-  }
-}
-
-export function CalendarGrid({
+export const CalendarGrid = memo(function CalendarGrid({
   events,
   currentDate,
   selectedDiscipline,
@@ -54,10 +60,11 @@ export function CalendarGrid({
   registrationLinks,
   onPrevMonth,
   onNextMonth,
+  onDayClick,
 }: Props) {
   const [modalDate, setModalDate] = useState<string | null>(null);
   const [, setTick] = useState(0);
-
+  const theme = useTheme();
   useInterval(() => setTick((t) => t + 1), 60000);
 
   const month = currentDate.getMonth();
@@ -77,14 +84,27 @@ export function CalendarGrid({
   const startOffset = (firstDay.getDay() + 6) % 7;
   const daysInMonth = new Date(year, month + 1, 0).getDate();
 
-  const weekdays = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+  const monthName = currentDate.toLocaleString('ru-RU', { month: 'long' });
+  const yearStr = currentDate.getFullYear();
 
-  const title = currentDate.toLocaleString('ru-RU', { month: 'long', year: 'numeric' });
+  // Today
+  const now = new Date();
+  const todayStr = formatLocalDate(now.getFullYear(), now.getMonth(), now.getDate());
+
+  // Total events count for this month
+  const totalEventsThisMonth = filteredEvents.length;
 
   const modalEvents = useMemo(() => {
     if (!modalDate) return [];
-    return allEventsDeduped.filter((e) => (e.event_date).slice(0, 10) === modalDate);
+    return allEventsDeduped.filter((e) => e.event_date.slice(0, 10) === modalDate);
   }, [modalDate, allEventsDeduped]);
+
+  // Format modal date for display
+  const modalDateFormatted = useMemo(() => {
+    if (!modalDate) return '';
+    const d = new Date(modalDate + 'T12:00:00');
+    return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+  }, [modalDate]);
 
   const getRegLink = useCallback(
     (event: CalendarEvent): string => {
@@ -100,148 +120,415 @@ export function CalendarGrid({
 
   return (
     <>
-      <div className="calendar-controls" style={{ display: 'flex', gap: 12, alignItems: 'center', justifyContent: 'center', marginBottom: 16, padding: '8px 0 12px' }}>
-        <button className="calendar-nav-btn" onClick={onPrevMonth} aria-label="Предыдущий месяц">◀</button>
-        <div className="calendar-month">{title}</div>
-        <button className="calendar-nav-btn" onClick={onNextMonth} aria-label="Следующий месяц">▶</button>
-      </div>
+      {/* Month navigation */}
+      <Paper
+        variant="outlined"
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          px: { xs: 2, md: 3 },
+          py: 1.5,
+          mb: 2.5,
+          borderRadius: 3,
+        }}
+      >
+        <IconButton
+          onClick={onPrevMonth}
+          sx={{
+            bgcolor: alpha(theme.palette.primary.main, 0.08),
+            '&:hover': {
+              bgcolor: alpha(theme.palette.primary.main, 0.15),
+              transform: 'translateX(-2px)',
+            },
+            transition: 'all 0.2s ease',
+          }}
+        >
+          <ChevronLeftIcon />
+        </IconButton>
 
-      <div className="calendar-grid">
-        {weekdays.map((w) => (
-          <div key={w} style={{ color: 'var(--color-text-secondary)', fontWeight: 700 }}>
-            {w}
-          </div>
-        ))}
+        <Box sx={{ textAlign: 'center' }}>
+          <Typography variant="h5" fontWeight={800} sx={{ textTransform: 'capitalize', lineHeight: 1.2 }}>
+            {monthName}
+          </Typography>
+          <Typography variant="caption" color="text.secondary" fontWeight={600}>
+            {yearStr} &middot; {totalEventsThisMonth}{' '}
+            {totalEventsThisMonth === 1 ? 'событие' : totalEventsThisMonth < 5 ? 'события' : 'событий'}
+          </Typography>
+        </Box>
 
+        <IconButton
+          onClick={onNextMonth}
+          sx={{
+            bgcolor: alpha(theme.palette.primary.main, 0.08),
+            '&:hover': {
+              bgcolor: alpha(theme.palette.primary.main, 0.15),
+              transform: 'translateX(2px)',
+            },
+            transition: 'all 0.2s ease',
+          }}
+        >
+          <ChevronRightIcon />
+        </IconButton>
+      </Paper>
+
+      {/* Calendar grid */}
+      <Box
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(7, 1fr)',
+          gap: { xs: 0.5, md: 0.75 },
+        }}
+      >
+        {/* Weekday headers */}
+        {WEEKDAYS.map((w, idx) => {
+          const isWeekend = idx >= 5;
+          return (
+            <Box
+              key={w}
+              sx={{
+                textAlign: 'center',
+                py: 1,
+                borderRadius: 1.5,
+                bgcolor: alpha(theme.palette.primary.main, 0.04),
+              }}
+            >
+              <Typography
+                variant="caption"
+                fontWeight={700}
+                sx={{
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.1em',
+                  fontSize: '0.7rem',
+                  color: isWeekend ? alpha(theme.palette.error.main, 0.6) : 'text.secondary',
+                }}
+              >
+                {w}
+              </Typography>
+            </Box>
+          );
+        })}
+
+        {/* Empty cells */}
         {Array.from({ length: startOffset }, (_, i) => (
-          <div key={`empty-${i}`} className="calendar-cell calendar-empty" />
+          <Box key={`empty-${i}`} sx={{ minHeight: { xs: 48, md: 80 } }} />
         ))}
 
+        {/* Day cells */}
         {Array.from({ length: daysInMonth }, (_, i) => {
           const day = i + 1;
           const dateStr = formatLocalDate(year, month, day);
-          const dayEventsFiltered = filteredEvents.filter(
-            (e) => (e.event_date).slice(0, 10) === dateStr,
-          );
+          const dayEvents = filteredEvents.filter((e) => e.event_date.slice(0, 10) === dateStr);
+          const hasEvents = dayEvents.length > 0;
+          const isToday = dateStr === todayStr;
+          const dayOfWeek = (startOffset + i) % 7;
+          const isWeekend = dayOfWeek >= 5;
 
           const uniqueDisciplines = [
             ...new Set(
               events
-                .filter((e) => (e.event_date).slice(0, 10) === dateStr && e.discipline)
+                .filter((e) => e.event_date.slice(0, 10) === dateStr && e.discipline)
                 .map((e) => e.discipline!),
             ),
           ];
 
-          const isActive = dayEventsFiltered.length > 0 && isTournamentActive(dayEventsFiltered[0]);
-          const hasEvents = dayEventsFiltered.length > 0;
-
-          let borderStyle: React.CSSProperties = {};
-          if (hasEvents) {
-            if (uniqueDisciplines.length === 1) {
-              const color = getDisciplineColor(uniqueDisciplines[0], colorsMap[uniqueDisciplines[0]]);
-              borderStyle = { borderColor: color, borderWidth: 2 };
-              if (isActive) borderStyle.backgroundColor = 'rgba(16, 185, 129, 0.2)';
-            } else if (uniqueDisciplines.length > 1) {
-              borderStyle = { borderColor: 'transparent', borderWidth: 0, backgroundColor: isActive ? 'rgba(16, 185, 129, 0.2)' : 'rgba(45, 27, 61, 0.25)' };
-            }
-          }
+          const accentColor =
+            hasEvents && uniqueDisciplines.length === 1
+              ? getDisciplineColor(uniqueDisciplines[0], colorsMap[uniqueDisciplines[0]])
+              : theme.palette.primary.main;
 
           return (
-            <div
+            <Tooltip
               key={day}
-              className={`calendar-cell${hasEvents ? ' calendar-has-events' : ''}`}
-              style={borderStyle}
-              onClick={() => setModalDate(dateStr)}
+              title={
+                hasEvents
+                  ? dayEvents.map((e) => e.title).join(', ')
+                  : ''
+              }
+              arrow
+              placement="top"
             >
-              <div className="calendar-date-num">{day}</div>
-              {hasEvents && (
-                <>
-                  <div className="calendar-discipline-icons">
-                    {uniqueDisciplines.map((d) => {
-                      const url = getDisciplineIconUrl(d, disciplines.find((dd) => dd.name === d)?.logo_url);
+              <Paper
+                variant="outlined"
+                onClick={() => {
+                  if (onDayClick) {
+                    onDayClick(dateStr);
+                  } else {
+                    setModalDate(dateStr);
+                  }
+                }}
+                sx={{
+                  p: { xs: 0.5, md: 1 },
+                  minHeight: { xs: 48, md: 80 },
+                  cursor: 'pointer',
+                  position: 'relative',
+                  overflow: 'hidden',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  borderColor: hasEvents ? alpha(accentColor, 0.35) : 'divider',
+                  borderWidth: hasEvents ? 1.5 : 1,
+                  transition: 'all 0.2s ease',
+                  ...(isToday && {
+                    borderColor: theme.palette.primary.main,
+                    borderWidth: 2,
+                    boxShadow: `0 0 12px ${alpha(theme.palette.primary.main, 0.2)}`,
+                  }),
+                  '&:hover': {
+                    bgcolor: hasEvents
+                      ? alpha(accentColor, 0.06)
+                      : alpha('#fff', 0.02),
+                    borderColor: hasEvents
+                      ? alpha(accentColor, 0.6)
+                      : alpha(theme.palette.primary.main, 0.3),
+                    transform: 'scale(1.03)',
+                    zIndex: 1,
+                  },
+                  // Bottom color bar for event days
+                  ...(hasEvents && {
+                    '&::after': {
+                      content: '""',
+                      position: 'absolute',
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      height: 3,
+                      background:
+                        uniqueDisciplines.length > 1
+                          ? `linear-gradient(90deg, ${uniqueDisciplines.map((d) => getDisciplineColor(d, colorsMap[d])).join(', ')})`
+                          : accentColor,
+                    },
+                  }),
+                }}
+              >
+                {/* Day number */}
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Typography
+                    variant="caption"
+                    fontWeight={isToday ? 800 : hasEvents ? 700 : 400}
+                    sx={{
+                      fontSize: { xs: '0.7rem', md: '0.82rem' },
+                      color: isToday
+                        ? 'primary.main'
+                        : isWeekend
+                          ? alpha(theme.palette.error.main, 0.5)
+                          : 'text.primary',
+                      ...(isToday && {
+                        bgcolor: alpha(theme.palette.primary.main, 0.15),
+                        borderRadius: '50%',
+                        width: 24,
+                        height: 24,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }),
+                    }}
+                  >
+                    {day}
+                  </Typography>
+                  {/* Event count badge (desktop) */}
+                  {hasEvents && dayEvents.length > 1 && (
+                    <Box
+                      sx={{
+                        display: { xs: 'none', md: 'flex' },
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: 18,
+                        height: 18,
+                        borderRadius: '50%',
+                        bgcolor: alpha(accentColor, 0.2),
+                        fontSize: '0.6rem',
+                        fontWeight: 700,
+                        color: accentColor,
+                      }}
+                    >
+                      {dayEvents.length}
+                    </Box>
+                  )}
+                </Box>
+
+                {/* Event titles */}
+                {hasEvents && (
+                  <Stack spacing={0.25} sx={{ mt: 0.5, flex: 1 }}>
+                    {dayEvents.slice(0, 2).map((e) => {
+                      const evColor = e.discipline
+                        ? getDisciplineColor(e.discipline, colorsMap[e.discipline ?? ''])
+                        : theme.palette.primary.main;
                       return (
-                        <div key={d} className="calendar-discipline-icon">
-                          {url ? (
-                            <img src={url} className="discipline-icon" alt={d} />
-                          ) : (
-                            <span className="discipline-icon discipline-icon-emoji">🎮</span>
-                          )}
-                        </div>
+                        <Box
+                          key={e.id}
+                          sx={{
+                            display: { xs: 'none', md: 'flex' },
+                            alignItems: 'center',
+                            gap: 0.5,
+                            px: 0.5,
+                            py: 0.15,
+                            borderRadius: 0.75,
+                            bgcolor: alpha(evColor, 0.1),
+                            borderLeft: `2px solid ${evColor}`,
+                          }}
+                        >
+                          <Typography
+                            variant="caption"
+                            noWrap
+                            sx={{
+                              fontSize: '0.62rem',
+                              color: evColor,
+                              fontWeight: 600,
+                            }}
+                          >
+                            {e.title}
+                          </Typography>
+                        </Box>
                       );
                     })}
-                  </div>
-                  <div className="calendar-events-text">
-                    {dayEventsFiltered.slice(0, 2).map((e) => {
-                      const color = e.discipline ? getDisciplineColor(e.discipline, colorsMap[e.discipline ?? '']) : '#8b5abf';
-                      const shortTitle = e.title.length > 15 ? e.title.substring(0, 15) + '...' : e.title;
-                      return (
-                        <div key={e.id} className="calendar-event-item" style={{ color }}>
-                          {shortTitle}
-                        </div>
-                      );
-                    })}
-                    {dayEventsFiltered.length > 2 && (
-                      <div className="calendar-event-more">+{dayEventsFiltered.length - 2}</div>
+                    {dayEvents.length > 2 && (
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        sx={{ fontSize: '0.58rem', pl: 0.5, display: { xs: 'none', md: 'block' } }}
+                      >
+                        +{dayEvents.length - 2} ещё
+                      </Typography>
                     )}
-                  </div>
-                </>
-              )}
-            </div>
+                    {/* Mobile: just dots */}
+                    <Box sx={{ display: { xs: 'flex', md: 'none' }, gap: 0.5, mt: 0.25 }}>
+                      {uniqueDisciplines.slice(0, 3).map((d) => (
+                        <Box
+                          key={d}
+                          sx={{
+                            width: 6,
+                            height: 6,
+                            borderRadius: '50%',
+                            bgcolor: getDisciplineColor(d, colorsMap[d]),
+                          }}
+                        />
+                      ))}
+                    </Box>
+                  </Stack>
+                )}
+              </Paper>
+            </Tooltip>
           );
         })}
-      </div>
+      </Box>
 
+      {/* Event modal */}
       <Modal
         open={modalDate !== null}
         onClose={() => setModalDate(null)}
-        title={modalEvents.length > 0 ? `События — ${modalDate}` : `Событий нет — ${modalDate}`}
+        title={modalDateFormatted}
+        maxWidth="sm"
       >
         {modalEvents.length === 0 ? (
-          <p style={{ color: 'var(--color-text-secondary)' }}>
-            На этот день пока ничего не запланировано.
-          </p>
+          <Box sx={{ textAlign: 'center', py: 4 }}>
+            <TodayIcon sx={{ fontSize: 48, color: 'text.secondary', opacity: 0.3, mb: 1 }} />
+            <Typography color="text.secondary">На этот день пока ничего не запланировано.</Typography>
+          </Box>
         ) : (
-          <div className="calendar-events-wrap">
+          <Stack spacing={2}>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: -0.5 }}>
+              {modalEvents.length} {modalEvents.length === 1 ? 'событие' : 'событий'}
+            </Typography>
             {modalEvents.map((e) => {
               const regLink = getRegLink(e);
+              const iconUrl = e.discipline
+                ? getDisciplineIconUrl(
+                    e.discipline,
+                    disciplines.find((d) => d.name === e.discipline)?.logo_url,
+                  )
+                : null;
+              const evColor = e.discipline
+                ? getDisciplineColor(e.discipline, colorsMap[e.discipline ?? ''])
+                : theme.palette.primary.main;
+
               return (
-                <div key={e.id} className="calendar-event-card">
+                <Paper
+                  key={e.id}
+                  variant="outlined"
+                  sx={{
+                    p: 2.5,
+                    borderLeft: `4px solid ${evColor}`,
+                    borderRadius: 2,
+                  }}
+                >
                   {e.image_url && (
-                    <img className="calendar-event-img" src={e.image_url} alt={e.title} />
-                  )}
-                  <div className="calendar-event-content">
-                    <h3>{e.title}</h3>
-                    {e.discipline && (
-                      <div
-                        className="calendar-event-discipline"
-                        style={{ color: getDisciplineColor(e.discipline, colorsMap[e.discipline]) }}
-                      >
-                        {e.discipline}
-                      </div>
-                    )}
-                    {e.prize && <div className="calendar-event-prize">Призовой фонд: {e.prize}</div>}
-                    {e.start_time && (
-                      <div className="calendar-event-time">
-                        Время старта: {e.start_time.split(':').slice(0, 2).join(':')} МСК
-                      </div>
-                    )}
-                    {e.description && <div className="calendar-event-desc">{e.description}</div>}
-                    {e.max_teams && (
-                      <div className="calendar-event-teams">Команд: {e.max_teams}</div>
-                    )}
-                    <TournamentButton
-                      date={(e.event_date).slice(0, 10)}
-                      startTime={e.start_time}
-                      regLink={regLink}
-                      watchUrl={e.watch_url}
+                    <Box
+                      component="img"
+                      src={e.image_url}
+                      alt={e.title}
+                      sx={{
+                        width: '100%',
+                        borderRadius: 1.5,
+                        mb: 2,
+                        maxHeight: 200,
+                        objectFit: 'cover',
+                      }}
                     />
-                  </div>
-                </div>
+                  )}
+
+                  <Typography variant="h6" fontWeight={700} sx={{ lineHeight: 1.3, mb: 1 }}>
+                    {e.title}
+                  </Typography>
+
+                  <Stack direction="row" spacing={1} sx={{ mb: 1.5, flexWrap: 'wrap', gap: 0.5 }}>
+                    {e.discipline && (
+                      <Chip
+                        label={e.discipline}
+                        size="small"
+                        variant="outlined"
+                        avatar={
+                          iconUrl ? (
+                            <Box
+                              component="img"
+                              src={iconUrl}
+                              alt={e.discipline}
+                              sx={{ width: 16, height: 16, borderRadius: '50%' }}
+                            />
+                          ) : undefined
+                        }
+                        sx={{ borderColor: alpha(evColor, 0.3) }}
+                      />
+                    )}
+                    {e.start_time && (
+                      <Chip
+                        icon={<AccessTimeIcon />}
+                        label={`${e.start_time.split(':').slice(0, 2).join(':')} МСК`}
+                        size="small"
+                        variant="outlined"
+                      />
+                    )}
+                    {e.prize && (
+                      <Chip
+                        icon={<EmojiEventsIcon />}
+                        label={e.prize}
+                        size="small"
+                        variant="outlined"
+                        sx={{ borderColor: alpha('#fbbf24', 0.3), color: '#fbbf24' }}
+                      />
+                    )}
+                  </Stack>
+
+                  {e.description && (
+                    <>
+                      <Divider sx={{ my: 1.5, opacity: 0.3 }} />
+                      <Typography variant="body2" color="text.secondary">
+                        {e.description}
+                      </Typography>
+                    </>
+                  )}
+
+                  <TournamentButton
+                    date={e.event_date.slice(0, 10)}
+                    startTime={e.start_time}
+                    regLink={regLink}
+                    watchUrl={e.watch_url}
+                  />
+                </Paper>
               );
             })}
-          </div>
+          </Stack>
         )}
       </Modal>
     </>
   );
-}
+});

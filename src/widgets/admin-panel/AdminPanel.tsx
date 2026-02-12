@@ -1,14 +1,44 @@
 import { useState, useEffect, useCallback } from 'react';
+import Box from '@mui/material/Box';
+import Tabs from '@mui/material/Tabs';
+import Tab from '@mui/material/Tab';
+import Button from '@mui/material/Button';
+import IconButton from '@mui/material/IconButton';
+import Typography from '@mui/material/Typography';
+import Chip from '@mui/material/Chip';
+import Stack from '@mui/material/Stack';
+import Table from '@mui/material/Table';
+import TableBody from '@mui/material/TableBody';
+import TableCell from '@mui/material/TableCell';
+import TableContainer from '@mui/material/TableContainer';
+import TableHead from '@mui/material/TableHead';
+import TableRow from '@mui/material/TableRow';
+import Paper from '@mui/material/Paper';
+import Tooltip from '@mui/material/Tooltip';
+import Fab from '@mui/material/Fab';
+import TextField from '@mui/material/TextField';
+import { alpha, useTheme } from '@mui/material/styles';
+import AddIcon from '@mui/icons-material/Add';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
+import ArchiveIcon from '@mui/icons-material/Archive';
+import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
+import HistoryIcon from '@mui/icons-material/History';
+import GroupsIcon from '@mui/icons-material/Groups';
+import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
+import CategoryIcon from '@mui/icons-material/Category';
+import LinkIcon from '@mui/icons-material/Link';
+import DescriptionIcon from '@mui/icons-material/Description';
+import ShareIcon from '@mui/icons-material/Share';
 import { useTournamentStore } from '@/entities/tournament/model';
 import { useTeamStore } from '@/entities/team/model';
 import { useDisciplineStore } from '@/entities/discipline/model';
 import { useCalendarStore } from '@/entities/calendar-event/model';
 import { useRegulationStore } from '@/entities/regulation/model';
-import { getDisciplineIconUrl } from '@/shared/lib/discipline-icons';
-import { getDisciplineColor } from '@/shared/lib/discipline-colors';
-import { formatDateForDisplay } from '@/shared/lib/date';
 import { clearCache } from '@/shared/lib/cache';
 import { Modal } from '@/shared/ui/modal/Modal';
+import { showSuccess, showError } from '@/shared/lib/toast';
+import { showConfirm } from '@/shared/ui/confirm-dialog/ConfirmDialog';
 import { TournamentForm } from '@/features/admin-forms/tournament-form/TournamentForm';
 import { TeamForm } from '@/features/admin-forms/team-form/TeamForm';
 import { CalendarEventForm } from '@/features/admin-forms/calendar-form/CalendarEventForm';
@@ -25,27 +55,32 @@ import type { CalendarEvent } from '@/entities/calendar-event/types';
 import type { Regulation } from '@/entities/regulation/types';
 import type { Discipline } from '@/entities/discipline/types';
 
-type TabName = 'active' | 'past' | 'teams' | 'calendar' | 'disciplines' | 'links' | 'regulations' | 'social';
+const TAB_KEYS = ['active', 'past', 'teams', 'calendar', 'disciplines', 'links', 'regulations', 'social'] as const;
+type TabName = (typeof TAB_KEYS)[number];
 
-const TABS: { key: TabName; label: string }[] = [
-  { key: 'active', label: 'Активные турниры' },
-  { key: 'past', label: 'Архив турниров' },
-  { key: 'teams', label: 'Зарегистрированные команды' },
-  { key: 'calendar', label: 'Календарь' },
-  { key: 'disciplines', label: 'Дисциплины' },
-  { key: 'links', label: 'Ссылки на формы' },
-  { key: 'regulations', label: 'Регламент' },
-  { key: 'social', label: 'Социальные кнопки' },
-];
+const TAB_CONFIG: Record<TabName, { label: string; icon: React.ReactElement }> = {
+  active: { label: 'Активные', icon: <EmojiEventsIcon fontSize="small" /> },
+  past: { label: 'Архив', icon: <HistoryIcon fontSize="small" /> },
+  teams: { label: 'Команды', icon: <GroupsIcon fontSize="small" /> },
+  calendar: { label: 'Календарь', icon: <CalendarMonthIcon fontSize="small" /> },
+  disciplines: { label: 'Дисциплины', icon: <CategoryIcon fontSize="small" /> },
+  links: { label: 'Ссылки', icon: <LinkIcon fontSize="small" /> },
+  regulations: { label: 'Регламент', icon: <DescriptionIcon fontSize="small" /> },
+  social: { label: 'Соцсети', icon: <ShareIcon fontSize="small" /> },
+};
 
 export function AdminPanel() {
   const savedTab = localStorage.getItem('adminActiveTab') as TabName | null;
-  const [tab, setTab] = useState<TabName>(savedTab || 'active');
+  const [tab, setTab] = useState<TabName>(savedTab && TAB_KEYS.includes(savedTab) ? savedTab : 'active');
   const [filterActive, setFilterActive] = useState('all');
   const [filterPast, setFilterPast] = useState('all');
   const [filterTeams, setFilterTeams] = useState('all');
   const [filterCalendar, setFilterCalendar] = useState('all');
   const [regLinks, setRegLinks] = useState<Record<string, string>>({});
+
+  // New discipline form
+  const [newDisciplineName, setNewDisciplineName] = useState('');
+  const [newDisciplineColor, setNewDisciplineColor] = useState('#8b5abf');
 
   // Modal states
   const [tournamentModal, setTournamentModal] = useState<{ open: boolean; tournament?: Tournament; isPast?: boolean }>({ open: false });
@@ -61,11 +96,12 @@ export function AdminPanel() {
   const calendarStore = useCalendarStore();
   const regulationStore = useRegulationStore();
 
-  const switchTab = useCallback((t: TabName) => {
-    setTab(t);
-    localStorage.setItem('adminActiveTab', t);
-    if (t === 'teams') teamStore.fetchAll();
-    if (t === 'calendar') calendarStore.fetchEvents();
+  const handleTabChange = useCallback((_: unknown, value: number) => {
+    const key = TAB_KEYS[value];
+    setTab(key);
+    localStorage.setItem('adminActiveTab', key);
+    if (key === 'teams') teamStore.fetchAll();
+    if (key === 'calendar') calendarStore.fetchEvents();
   }, [teamStore, calendarStore]);
 
   useEffect(() => {
@@ -75,358 +111,421 @@ export function AdminPanel() {
     regulationStore.fetchAll();
     calendarStore.fetchEvents();
     linksApi.getAll().then(setRegLinks);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Active tournaments tab
-  const renderActive = () => {
-    const available = [...new Set(tournamentStore.activeTournaments.map((t) => t.discipline))];
-    const filtered = filterActive === 'all'
-      ? tournamentStore.activeTournaments
-      : tournamentStore.activeTournaments.filter((t) => t.discipline === filterActive);
+  // ─── Handlers ───
 
-    return (
-      <>
-        <div style={{ marginBottom: 20 }}>
-          <button className="btn-primary" onClick={() => setTournamentModal({ open: true })}>
-            + Добавить турнир
-          </button>
-        </div>
-        <DisciplineFilter selected={filterActive} onSelect={setFilterActive} availableDisciplines={available} />
-        <div className="tournaments-admin-grid">
-          {filtered.length === 0 ? (
-            <div className="empty-state"><p>Нет активных турниров</p></div>
-          ) : filtered.map((t) => (
-            <div key={t.id} className="tournament-admin-card">
-              <div className="tournament-admin-info">
-                <div className="info-item">
-                  <span className="info-label">Название</span>
-                  <span className="info-value">{t.title}</span>
-                </div>
-                <div className="info-item">
-                  <span className="info-label">Дисциплина</span>
-                  <span className="info-value">{t.discipline}</span>
-                </div>
-                <div className="info-item">
-                  <span className="info-label">Дата</span>
-                  <span className="info-value">{t.date}</span>
-                </div>
-                <div className="info-item">
-                  <span className="info-label">Призовой фонд</span>
-                  <span className="info-value">{t.prize}</span>
-                </div>
-                <div className="info-item">
-                  <span className="info-label">Команд</span>
-                  <span className="info-value">{t.teams || 0} / {t.max_teams}</span>
-                </div>
-              </div>
-              <div className="tournament-admin-actions">
-                <button className="btn-edit" onClick={() => setTournamentModal({ open: true, tournament: t })}>Изменить</button>
-                <button className="btn-danger" style={{ background: 'rgba(255, 193, 7, 0.8)' }} onClick={() => handleArchive(t)}>В архив</button>
-                <button className="btn-danger" onClick={() => handleDeleteTournament(t.id)}>Удалить</button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </>
-    );
-  };
-
-  // Past tournaments tab
-  const renderPast = () => {
-    const available = [...new Set(tournamentStore.pastTournaments.map((t) => t.discipline))];
-    const filtered = filterPast === 'all'
-      ? tournamentStore.pastTournaments
-      : tournamentStore.pastTournaments.filter((t) => t.discipline === filterPast);
-
-    return (
-      <>
-        <div style={{ marginBottom: 20 }}>
-          <button className="btn-primary" onClick={() => setTournamentModal({ open: true, isPast: true })}>
-            + Добавить прошедший турнир
-          </button>
-        </div>
-        <DisciplineFilter selected={filterPast} onSelect={setFilterPast} availableDisciplines={available} />
-        <div className="tournaments-admin-grid">
-          {filtered.length === 0 ? (
-            <div className="empty-state"><p>Нет прошедших турниров</p></div>
-          ) : filtered.map((t) => (
-            <div key={t.id} className="tournament-admin-card">
-              <div className="tournament-admin-info">
-                <div className="info-item"><span className="info-label">Название</span><span className="info-value">{t.title}</span></div>
-                <div className="info-item"><span className="info-label">Дисциплина</span><span className="info-value">{t.discipline}</span></div>
-                <div className="info-item"><span className="info-label">Дата</span><span className="info-value">{t.date}</span></div>
-                <div className="info-item"><span className="info-label">Призовой фонд</span><span className="info-value">{t.prize}</span></div>
-                <div className="info-item"><span className="info-label">Команд</span><span className="info-value">{t.teams || 0}</span></div>
-                {t.winner && <div className="info-item"><span className="info-label">Победитель</span><span className="info-value">{t.winner}</span></div>}
-              </div>
-              <div className="tournament-admin-actions">
-                <button className="btn-edit" onClick={() => setTournamentModal({ open: true, tournament: t, isPast: true })}>Изменить</button>
-                <button className="btn-danger" onClick={() => handleDeleteTournament(t.id)}>Удалить</button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </>
-    );
-  };
-
-  // Teams tab
-  const renderTeams = () => {
-    const data = Object.entries(teamStore.teamsByTournament);
-    const allTournaments = [...tournamentStore.activeTournaments, ...tournamentStore.pastTournaments];
-    const available = [...new Set(data.flatMap(([tid]) => {
-      const t = allTournaments.find((x) => String(x.id) === tid);
-      return t ? [t.discipline] : [];
-    }))];
-    const filtered = filterTeams === 'all' ? data : data.filter(([tid]) => {
-      const t = allTournaments.find((x) => String(x.id) === tid);
-      return t?.discipline === filterTeams;
+  const handleArchive = (t: Tournament) => {
+    showConfirm({
+      message: `Перенести "${t.title}" в архив?`,
+      confirmLabel: 'В архив',
+      onConfirm: async () => {
+        try {
+          await tournamentStore.updateTournament({
+            id: t.id, title: t.title, discipline: t.discipline, date: t.date,
+            prize: t.prize, maxTeams: t.max_teams, customLink: t.custom_link,
+            status: 'finished', winner: t.winner, watchUrl: t.watch_url, startTime: t.start_time,
+          });
+          showSuccess('Турнир перенесён в архив');
+        } catch (e) {
+          showError('Ошибка: ' + (e instanceof Error ? e.message : e));
+        }
+      },
     });
-
-    return (
-      <div className="links-container">
-        <div className="admin-header" style={{ marginBottom: 20 }}>
-          <h2>Зарегистрированные команды</h2>
-          <button className="btn-primary" onClick={() => setTeamModal({ open: true })}>+ Добавить команду</button>
-        </div>
-        <DisciplineFilter selected={filterTeams} onSelect={setFilterTeams} availableDisciplines={available} />
-        <div id="teams-admin-container">
-          {filtered.length === 0 ? (
-            <div className="empty-state"><p>Пока нет команд</p></div>
-          ) : filtered.map(([tid, teams]) => {
-            const t = allTournaments.find((x) => String(x.id) === tid);
-            return (
-              <div key={tid} className="tournament-section" style={{ marginBottom: 30 }}>
-                <h3 style={{ marginBottom: 15 }}>{t?.title || `Турнир #${tid}`} - {t?.discipline || ''}</h3>
-                {teams.map((team) => (
-                  <div key={team.id} className="discipline-item" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 15, background: 'rgba(107, 45, 143, 0.2)', borderRadius: 8, marginBottom: 10 }}>
-                    <div>
-                      <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 5 }}>{team.name}</div>
-                      <div style={{ fontSize: 14, color: 'var(--color-text-secondary)' }}>👥 {team.players} игроков</div>
-                    </div>
-                    <div style={{ display: 'flex', gap: 10 }}>
-                      <button className="btn-edit" onClick={() => setTeamModal({ open: true, team })}>Изменить</button>
-                      <button className="btn-danger" onClick={() => handleDeleteTeam(team.id)}>Удалить</button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
   };
 
-  // Calendar tab
-  const renderCalendar = () => (
-    <div className="links-container">
-      <div className="admin-header" style={{ marginBottom: 20, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-        <h2 style={{ flex: 1, minWidth: 200 }}>Календарь активностей</h2>
-      </div>
-      <div className="calendar-wrapper-admin">
-        <div className="calendar-filters">
-          <DisciplineFilter selected={filterCalendar} onSelect={setFilterCalendar} colored />
-        </div>
-        <CalendarGrid
-          events={calendarStore.events}
-          currentDate={calendarStore.currentDate}
-          selectedDiscipline={filterCalendar}
-          disciplines={disciplineStore.disciplines}
-          colorsMap={disciplineStore.colorsMap}
-          registrationLinks={regLinks}
-          onPrevMonth={() => { calendarStore.prevMonth(); setTimeout(() => calendarStore.fetchEvents(), 0); }}
-          onNextMonth={() => { calendarStore.nextMonth(); setTimeout(() => calendarStore.fetchEvents(), 0); }}
-        />
-      </div>
-    </div>
-  );
-
-  // Disciplines tab
-  const renderDisciplines = () => (
-    <div className="links-container">
-      <h2>Управление дисциплинами</h2>
-      <p className="hint">Добавляйте или удаляйте дисциплины. Редактируйте цвета.</p>
-      <div className="form-group" style={{ maxWidth: 500, marginBottom: 20 }}>
-        <label>Добавить новую дисциплину</label>
-        <div style={{ display: 'flex', gap: 10, flexDirection: 'column' }}>
-          <input type="text" id="new-discipline-input" placeholder="Название дисциплины" />
-          <input type="color" id="new-discipline-color" defaultValue="#8b5abf" style={{ width: 60, height: 40, cursor: 'pointer', borderRadius: 4 }} />
-          <button className="btn-primary" onClick={handleAddDiscipline}>Добавить</button>
-        </div>
-      </div>
-      <div className="disciplines-list">
-        {disciplineStore.disciplines.map((d) => (
-          <div key={d.id} className="discipline-item" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 15, background: 'rgba(107, 45, 143, 0.2)', borderRadius: 8, marginBottom: 10 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 15, flex: 1 }}>
-              <div style={{ width: 30, height: 30, borderRadius: 4, background: d.color || '#8b5abf', border: `2px solid ${d.color || '#8b5abf'}` }} />
-              <span style={{ fontSize: 16, fontWeight: 500 }}>{d.name}</span>
-            </div>
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button className="btn-edit" onClick={() => setDisciplineModal({ open: true, discipline: d })}>Изменить</button>
-              <button className="btn-danger" onClick={() => handleDeleteDiscipline(d.name)}>Удалить</button>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-
-  // Regulations tab
-  const renderRegulations = () => (
-    <div className="links-container">
-      <h2>Управление регламентами</h2>
-      <p className="hint">Загрузите PDF файлы с регламентами</p>
-      <div className="admin-header" style={{ marginBottom: 20 }}>
-        <button className="btn-primary" onClick={() => setRegulationModal({ open: true })}>+ Добавить регламент</button>
-      </div>
-      <div id="regulations-list">
-        {regulationStore.regulations.length === 0 ? (
-          <div className="empty-state"><p>Нет регламентов</p></div>
-        ) : regulationStore.regulations.map((r) => (
-          <div key={r.id} className="regulation-item">
-            <div className="regulation-info">
-              <h3>{r.discipline_name}{r.regulation_name ? ` - ${r.regulation_name}` : ''}</h3>
-              <a href={r.pdf_url} target="_blank" rel="noopener noreferrer" className="regulation-link">Открыть PDF</a>
-            </div>
-            <div className="regulation-actions" style={{ display: 'flex', gap: 10 }}>
-              <button className="btn-edit" onClick={() => setRegulationModal({ open: true, regulation: r })}>Изменить</button>
-              <button className="btn-danger" onClick={() => handleDeleteRegulation(r.id)}>Удалить</button>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-
-  // Handlers
-  const handleArchive = async (t: Tournament) => {
-    if (!confirm('Перенести турнир в архив?')) return;
-    try {
-      await tournamentStore.updateTournament({
-        id: t.id, title: t.title, discipline: t.discipline, date: t.date,
-        prize: t.prize, maxTeams: t.max_teams, customLink: t.custom_link,
-        status: 'finished', winner: t.winner, watchUrl: t.watch_url, startTime: t.start_time,
-      });
-      alert('Турнир перенесен в архив!');
-    } catch (e) { alert('Ошибка: ' + (e instanceof Error ? e.message : e)); }
+  const handleDeleteTournament = (id: number) => {
+    showConfirm({
+      message: 'Удалить турнир?',
+      onConfirm: async () => {
+        try {
+          await tournamentStore.removeTournament(id);
+          showSuccess('Турнир удалён');
+        } catch (e) {
+          showError('Ошибка: ' + (e instanceof Error ? e.message : e));
+        }
+      },
+    });
   };
 
-  const handleDeleteTournament = async (id: number) => {
-    if (!confirm('Удалить турнир?')) return;
-    try {
-      await tournamentStore.removeTournament(id);
-      alert('Турнир удален!');
-    } catch (e) { alert('Ошибка: ' + (e instanceof Error ? e.message : e)); }
-  };
-
-  const handleDeleteTeam = async (id: number) => {
-    if (!confirm('Удалить команду?')) return;
-    try {
-      await teamStore.removeTeam(id);
-      clearCache('tournaments');
-      await tournamentStore.fetchActive(true);
-      alert('Команда удалена!');
-    } catch (e) { alert('Ошибка: ' + (e instanceof Error ? e.message : e)); }
+  const handleDeleteTeam = (id: number) => {
+    showConfirm({
+      message: 'Удалить команду?',
+      onConfirm: async () => {
+        try {
+          await teamStore.removeTeam(id);
+          clearCache('tournaments');
+          await tournamentStore.fetchActive(true);
+          showSuccess('Команда удалена');
+        } catch (e) {
+          showError('Ошибка: ' + (e instanceof Error ? e.message : e));
+        }
+      },
+    });
   };
 
   const handleAddDiscipline = async () => {
-    const input = document.getElementById('new-discipline-input') as HTMLInputElement;
-    const colorInput = document.getElementById('new-discipline-color') as HTMLInputElement;
-    const name = input?.value.trim();
-    if (!name) { alert('Введите название!'); return; }
+    if (!newDisciplineName.trim()) {
+      showError('Введите название дисциплины');
+      return;
+    }
     try {
-      await disciplineStore.createDiscipline(name, colorInput?.value);
-      if (input) input.value = '';
-      alert(`Дисциплина "${name}" добавлена!`);
-    } catch (e) { alert('Ошибка: ' + (e instanceof Error ? e.message : e)); }
+      await disciplineStore.createDiscipline(newDisciplineName.trim(), newDisciplineColor);
+      showSuccess(`Дисциплина "${newDisciplineName}" добавлена`);
+      setNewDisciplineName('');
+    } catch (e) {
+      showError('Ошибка: ' + (e instanceof Error ? e.message : e));
+    }
   };
 
-  const handleDeleteDiscipline = async (name: string) => {
-    if (!confirm(`Удалить дисциплину "${name}"?`)) return;
-    try {
-      await disciplineStore.removeDiscipline(name);
-      alert(`Дисциплина "${name}" удалена!`);
-    } catch (e) { alert('Ошибка: ' + (e instanceof Error ? e.message : e)); }
+  const handleDeleteDiscipline = (name: string) => {
+    showConfirm({
+      message: `Удалить дисциплину "${name}"?`,
+      onConfirm: async () => {
+        try {
+          await disciplineStore.removeDiscipline(name);
+          showSuccess(`Дисциплина "${name}" удалена`);
+        } catch (e) {
+          showError('Ошибка: ' + (e instanceof Error ? e.message : e));
+        }
+      },
+    });
   };
 
-  const handleDeleteRegulation = async (id: number) => {
-    if (!confirm('Удалить регламент?')) return;
-    try {
-      await regulationStore.removeRegulation(id);
-      alert('Регламент удален!');
-    } catch (e) { alert('Ошибка: ' + (e instanceof Error ? e.message : e)); }
+  const handleDeleteRegulation = (id: number) => {
+    showConfirm({
+      message: 'Удалить регламент?',
+      onConfirm: async () => {
+        try {
+          await regulationStore.removeRegulation(id);
+          showSuccess('Регламент удалён');
+        } catch (e) {
+          showError('Ошибка: ' + (e instanceof Error ? e.message : e));
+        }
+      },
+    });
   };
+
+  // ─── Form submit handlers ───
 
   const handleTournamentSubmit = async (data: any) => {
     try {
       if (data.id) {
         await tournamentStore.updateTournament(data);
-        alert('Турнир обновлен!');
+        showSuccess('Турнир обновлён');
       } else {
         await tournamentStore.createTournament(data);
-        alert('Турнир добавлен!');
+        showSuccess('Турнир добавлен');
       }
       setTournamentModal({ open: false });
       if (data.status === 'finished') await tournamentStore.fetchPast(true);
-      else { await tournamentStore.fetchActive(true); calendarStore.fetchEvents(); }
-    } catch (e) { alert('Ошибка: ' + (e instanceof Error ? e.message : e)); }
+      else {
+        await tournamentStore.fetchActive(true);
+        calendarStore.fetchEvents();
+      }
+    } catch (e) {
+      showError('Ошибка: ' + (e instanceof Error ? e.message : e));
+    }
   };
 
   const handleTeamSubmit = async (data: any) => {
     try {
       if (data.id) {
         await teamStore.updateTeam(data);
-        alert('Команда обновлена!');
+        showSuccess('Команда обновлена');
       } else {
         await teamStore.createTeam(data);
-        alert('Команда добавлена!');
+        showSuccess('Команда добавлена');
       }
       setTeamModal({ open: false });
       clearCache('tournaments');
       await tournamentStore.fetchActive(true);
-    } catch (e) { alert('Ошибка: ' + (e instanceof Error ? e.message : e)); }
+    } catch (e) {
+      showError('Ошибка: ' + (e instanceof Error ? e.message : e));
+    }
   };
 
   const handleCalendarSubmit = async (data: any) => {
     try {
       if (data.id) {
         await calendarStore.updateEvent(data);
+        showSuccess('Событие обновлено');
       } else {
         await calendarStore.createEvent(data);
+        showSuccess('Событие добавлено');
       }
       setCalendarModal({ open: false });
-      clearCache('tournaments');
-      await tournamentStore.fetchActive(true);
-    } catch (e) { alert('Ошибка: ' + (e instanceof Error ? e.message : e)); }
+    } catch (e) {
+      showError('Ошибка: ' + (e instanceof Error ? e.message : e));
+    }
   };
 
   const handleRegulationSubmit = async (data: any) => {
     try {
       if (data.id) {
         await regulationStore.updateRegulation(data.id, data);
-        alert('Регламент обновлен!');
+        showSuccess('Регламент обновлён');
       } else {
         await regulationStore.createRegulation(data);
-        alert('Регламент добавлен!');
+        showSuccess('Регламент добавлен');
       }
       setRegulationModal({ open: false });
-    } catch (e) { alert('Ошибка: ' + (e instanceof Error ? e.message : e)); }
+    } catch (e) {
+      showError('Ошибка: ' + (e instanceof Error ? e.message : e));
+    }
   };
 
   const handleDisciplineSubmit = async (data: any) => {
     try {
       if (data.id) {
         await disciplineStore.updateDiscipline(data.id, { name: data.name, color: data.color });
-        alert('Дисциплина обновлена!');
+        showSuccess('Дисциплина обновлена');
       }
       setDisciplineModal({ open: false });
-    } catch (e) { alert('Ошибка: ' + (e instanceof Error ? e.message : e)); }
+    } catch (e) {
+      showError('Ошибка: ' + (e instanceof Error ? e.message : e));
+    }
   };
 
+  // ─── Tab renderers ───
+
+  const renderTournamentTable = (tournaments: Tournament[], isPast: boolean) => {
+    const filter = isPast ? filterPast : filterActive;
+    const setFilter = isPast ? setFilterPast : setFilterActive;
+    const available = [...new Set(tournaments.map((t) => t.discipline))];
+    const filtered = filter === 'all' ? tournaments : tournaments.filter((t) => t.discipline === filter);
+
+    return (
+      <>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 1 }}>
+          <DisciplineFilter selected={filter} onSelect={setFilter} availableDisciplines={available} />
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => setTournamentModal({ open: true, isPast })}
+          >
+            {isPast ? 'Добавить прошедший' : 'Добавить турнир'}
+          </Button>
+        </Box>
+
+        {filtered.length === 0 ? (
+          <Typography color="text.secondary" sx={{ py: 4, textAlign: 'center' }}>
+            Нет турниров
+          </Typography>
+        ) : (
+          <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 3 }}>
+            <Table size="small">
+              <TableHead>
+                <TableRow sx={{ '& th': { fontWeight: 700, fontSize: '0.8rem', letterSpacing: '0.03em', textTransform: 'uppercase', color: 'text.secondary' } }}>
+                  <TableCell>Название</TableCell>
+                  <TableCell>Дисциплина</TableCell>
+                  <TableCell>Дата</TableCell>
+                  <TableCell>Приз</TableCell>
+                  <TableCell align="right">Команд</TableCell>
+                  {isPast && <TableCell>Победитель</TableCell>}
+                  <TableCell align="right">Действия</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {filtered.map((t) => (
+                  <TableRow key={t.id} hover>
+                    <TableCell>{t.title}</TableCell>
+                    <TableCell><Chip label={t.discipline} size="small" /></TableCell>
+                    <TableCell>{t.date}</TableCell>
+                    <TableCell>{t.prize}</TableCell>
+                    <TableCell align="right">{isPast ? t.teams || 0 : `${t.teams || 0}/${t.max_teams}`}</TableCell>
+                    {isPast && <TableCell>{t.winner || '—'}</TableCell>}
+                    <TableCell align="right">
+                      <Stack direction="row" spacing={0.25} justifyContent="flex-end">
+                        <Tooltip title="Редактировать">
+                          <IconButton size="small" onClick={() => setTournamentModal({ open: true, tournament: t, isPast })}>
+                            <EditIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        {!isPast && (
+                          <Tooltip title="В архив">
+                            <IconButton size="small" onClick={() => handleArchive(t)} color="warning">
+                              <ArchiveIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        )}
+                        <Tooltip title="Удалить">
+                          <IconButton size="small" onClick={() => handleDeleteTournament(t.id)} color="error">
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      </Stack>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        )}
+      </>
+    );
+  };
+
+  const renderTeams = () => {
+    const data = Object.entries(teamStore.teamsByTournament);
+    const allTournaments = [...tournamentStore.activeTournaments, ...tournamentStore.pastTournaments];
+
+    return (
+      <>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+          <Typography variant="h6">Команды</Typography>
+          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setTeamModal({ open: true })}>
+            Добавить команду
+          </Button>
+        </Box>
+        {data.length === 0 ? (
+          <Typography color="text.secondary" sx={{ py: 4, textAlign: 'center' }}>
+            Пока нет команд
+          </Typography>
+        ) : (
+          data.map(([tid, teams]) => {
+            const t = allTournaments.find((x) => String(x.id) === tid);
+            return (
+              <Paper key={tid} variant="outlined" sx={{ p: 2, mb: 2 }}>
+                <Typography fontWeight={600} sx={{ mb: 1 }}>
+                  {t?.title || `Турнир #${tid}`} — {t?.discipline || ''}
+                </Typography>
+                <TableContainer>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Команда</TableCell>
+                        <TableCell align="right">Игроков</TableCell>
+                        <TableCell align="right">Действия</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {teams.map((team) => (
+                        <TableRow key={team.id} hover>
+                          <TableCell>{team.name}</TableCell>
+                          <TableCell align="right">{team.players}</TableCell>
+                          <TableCell align="right">
+                            <IconButton size="small" onClick={() => setTeamModal({ open: true, team })}>
+                              <EditIcon fontSize="small" />
+                            </IconButton>
+                            <IconButton size="small" onClick={() => handleDeleteTeam(team.id)} color="error">
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </Paper>
+            );
+          })
+        )}
+      </>
+    );
+  };
+
+  const handleCalendarDayClick = useCallback((dateStr: string) => {
+    setCalendarModal({ open: true, defaultDate: dateStr });
+  }, []);
+
+  const renderCalendar = () => (
+    <>
+      <DisciplineFilter selected={filterCalendar} onSelect={setFilterCalendar} colored />
+      <CalendarGrid
+        events={calendarStore.events}
+        currentDate={calendarStore.currentDate}
+        selectedDiscipline={filterCalendar}
+        disciplines={disciplineStore.disciplines}
+        colorsMap={disciplineStore.colorsMap}
+        registrationLinks={regLinks}
+        onPrevMonth={() => { calendarStore.prevMonth(); setTimeout(() => calendarStore.fetchEvents(), 0); }}
+        onNextMonth={() => { calendarStore.nextMonth(); setTimeout(() => calendarStore.fetchEvents(), 0); }}
+        onDayClick={handleCalendarDayClick}
+      />
+    </>
+  );
+
+  const renderDisciplines = () => (
+    <>
+      <Typography variant="h6" gutterBottom>
+        Управление дисциплинами
+      </Typography>
+      <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-end', mb: 3, maxWidth: 500 }}>
+        <TextField
+          label="Новая дисциплина"
+          value={newDisciplineName}
+          onChange={(e) => setNewDisciplineName(e.target.value)}
+          size="small"
+          sx={{ flex: 1 }}
+        />
+        <input
+          type="color"
+          value={newDisciplineColor}
+          onChange={(e) => setNewDisciplineColor(e.target.value)}
+          style={{ width: 40, height: 36, cursor: 'pointer', border: 'none', borderRadius: 4 }}
+        />
+        <Button variant="contained" onClick={handleAddDiscipline} size="small">
+          Добавить
+        </Button>
+      </Box>
+      <Stack spacing={1}>
+        {disciplineStore.disciplines.map((d) => (
+          <Paper key={d.id} variant="outlined" sx={{ p: 1.5, display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <Box sx={{ width: 24, height: 24, borderRadius: 0.5, bgcolor: d.color || '#8b5abf', flexShrink: 0 }} />
+            <Typography sx={{ flex: 1 }}>{d.name}</Typography>
+            <IconButton size="small" onClick={() => setDisciplineModal({ open: true, discipline: d })}>
+              <EditIcon fontSize="small" />
+            </IconButton>
+            <IconButton size="small" onClick={() => handleDeleteDiscipline(d.name)} color="error">
+              <DeleteIcon fontSize="small" />
+            </IconButton>
+          </Paper>
+        ))}
+      </Stack>
+    </>
+  );
+
+  const renderRegulations = () => (
+    <>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+        <Typography variant="h6">Регламенты</Typography>
+        <Button variant="contained" startIcon={<AddIcon />} onClick={() => setRegulationModal({ open: true })}>
+          Добавить
+        </Button>
+      </Box>
+      {regulationStore.regulations.length === 0 ? (
+        <Typography color="text.secondary" sx={{ py: 4, textAlign: 'center' }}>
+          Нет регламентов
+        </Typography>
+      ) : (
+        <Stack spacing={1}>
+          {regulationStore.regulations.map((r) => (
+            <Paper key={r.id} variant="outlined" sx={{ p: 1.5, display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              <Typography sx={{ flex: 1 }}>
+                {r.discipline_name}
+                {r.regulation_name && <Typography component="span" color="text.secondary"> — {r.regulation_name}</Typography>}
+              </Typography>
+              <Button href={r.pdf_url} target="_blank" rel="noopener noreferrer" size="small">
+                PDF
+              </Button>
+              <IconButton size="small" onClick={() => setRegulationModal({ open: true, regulation: r })}>
+                <EditIcon fontSize="small" />
+              </IconButton>
+              <IconButton size="small" onClick={() => handleDeleteRegulation(r.id)} color="error">
+                <DeleteIcon fontSize="small" />
+              </IconButton>
+            </Paper>
+          ))}
+        </Stack>
+      )}
+    </>
+  );
+
   const tabContent: Record<TabName, () => React.ReactNode> = {
-    active: renderActive,
-    past: renderPast,
+    active: () => renderTournamentTable(tournamentStore.activeTournaments, false),
+    past: () => renderTournamentTable(tournamentStore.pastTournaments, true),
     teams: renderTeams,
     calendar: renderCalendar,
     disciplines: renderDisciplines,
@@ -437,25 +536,34 @@ export function AdminPanel() {
 
   return (
     <>
-      <div className="admin-header">
-        <h1 className="page-title">Админ-панель</h1>
-      </div>
+      <Paper
+        variant="outlined"
+        sx={{ mb: 3, overflowX: 'auto', borderRadius: 3 }}
+      >
+        <Tabs
+          value={TAB_KEYS.indexOf(tab)}
+          onChange={handleTabChange}
+          variant="scrollable"
+          scrollButtons="auto"
+          sx={{
+            '& .MuiTab-root': {
+              minHeight: 52,
+              gap: 0.75,
+            },
+          }}
+        >
+          {TAB_KEYS.map((key) => (
+            <Tab
+              key={key}
+              label={TAB_CONFIG[key].label}
+              icon={TAB_CONFIG[key].icon}
+              iconPosition="start"
+            />
+          ))}
+        </Tabs>
+      </Paper>
 
-      <div className="admin-tabs">
-        {TABS.map((t) => (
-          <button
-            key={t.key}
-            className={`tab-btn${tab === t.key ? ' active' : ''}`}
-            onClick={() => switchTab(t.key)}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
-
-      <div className="tab-content active">
-        {tabContent[tab]()}
-      </div>
+      <Box>{tabContent[tab]()}</Box>
 
       {/* Tournament Modal */}
       <Modal

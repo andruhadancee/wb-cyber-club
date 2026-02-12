@@ -1,46 +1,81 @@
+import { memo } from 'react';
+import Accordion from '@mui/material/Accordion';
+import AccordionSummary from '@mui/material/AccordionSummary';
+import AccordionDetails from '@mui/material/AccordionDetails';
+import Typography from '@mui/material/Typography';
+import Box from '@mui/material/Box';
+import Chip from '@mui/material/Chip';
+import Table from '@mui/material/Table';
+import TableBody from '@mui/material/TableBody';
+import TableCell from '@mui/material/TableCell';
+import TableContainer from '@mui/material/TableContainer';
+import TableHead from '@mui/material/TableHead';
+import TableRow from '@mui/material/TableRow';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import GroupsIcon from '@mui/icons-material/Groups';
 import { getDisciplineIconUrl } from '@/shared/lib/discipline-icons';
+import { staggerItem } from '@/shared/lib/animations';
 import type { Team } from '@/entities/team/types';
 
 interface Props {
   tournamentTitle: string;
   discipline: string;
   teams: Team[];
+  index?: number;
 }
 
-export function TeamSection({ tournamentTitle, discipline, teams }: Props) {
+export const TeamSection = memo(function TeamSection({
+  tournamentTitle,
+  discipline,
+  teams,
+  index = 0,
+}: Props) {
   const iconUrl = getDisciplineIconUrl(discipline);
 
   return (
-    <div className="tournament-section">
-      <h2>
-        <span className="tournament-discipline-line">
-          <span className="tournament-header-icon">
-            {iconUrl ? (
-              <img src={iconUrl} className="discipline-icon" alt={discipline} />
-            ) : (
-              <span className="discipline-icon discipline-icon-emoji">🎮</span>
-            )}
-          </span>
-          <span className="tournament-header-discipline">{discipline}</span>
-        </span>
-        <span className="tournament-title-line">{tournamentTitle}</span>
-      </h2>
-      <div className="teams-list">
-        {teams.length > 0 ? (
-          teams.map((team) => (
-            <div key={team.id} className="team-card">
-              <div className="team-name">{team.name}</div>
-              <div className="team-info">
-                <span>👥 {team.players} игроков</span>
-              </div>
-            </div>
-          ))
+    <Accordion defaultExpanded sx={{ mb: 1, ...staggerItem(index) }}>
+      <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+          {iconUrl && (
+            <Box component="img" src={iconUrl} alt={discipline} sx={{ width: 24, height: 24, borderRadius: '50%' }} />
+          )}
+          <Typography fontWeight={600}>{tournamentTitle}</Typography>
+          <Chip label={discipline} size="small" variant="outlined" />
+          <Chip
+            icon={<GroupsIcon />}
+            label={`${teams.length} команд`}
+            size="small"
+            color="primary"
+            variant="outlined"
+          />
+        </Box>
+      </AccordionSummary>
+      <AccordionDetails sx={{ pt: 0 }}>
+        {teams.length === 0 ? (
+          <Typography color="text.secondary" variant="body2">
+            Команды ещё не зарегистрировались
+          </Typography>
         ) : (
-          <div className="empty-state">
-            <p>Команды ещё не зарегистрировались</p>
-          </div>
+          <TableContainer>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Название</TableCell>
+                  <TableCell align="right">Игроков</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {teams.map((team) => (
+                  <TableRow key={team.id}>
+                    <TableCell>{team.name}</TableCell>
+                    <TableCell align="right">{team.players}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
         )}
-      </div>
-    </div>
+      </AccordionDetails>
+    </Accordion>
   );
-}
+});

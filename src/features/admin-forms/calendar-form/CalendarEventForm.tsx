@@ -1,7 +1,15 @@
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useEffect } from 'react';
+import dayjs, { type Dayjs } from 'dayjs';
+import TextField from '@mui/material/TextField';
+import MenuItem from '@mui/material/MenuItem';
+import Stack from '@mui/material/Stack';
+import Button from '@mui/material/Button';
+import Box from '@mui/material/Box';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { TimePicker } from '@mui/x-date-pickers/TimePicker';
 import { useDisciplineStore } from '@/entities/discipline/model';
 import type { CalendarEvent } from '@/entities/calendar-event/types';
 
@@ -31,9 +39,15 @@ interface Props {
 export function CalendarEventForm({ event, defaultDate, onSubmit, onCancel }: Props) {
   const { disciplines, fetchAll } = useDisciplineStore();
 
-  useEffect(() => { fetchAll(); }, [fetchAll]);
+  useEffect(() => {
+    fetchAll();
+  }, [fetchAll]);
 
-  const { register, handleSubmit, formState: { errors } } = useForm<FormValues>({
+  const {
+    control,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: event
       ? {
@@ -57,65 +71,129 @@ export function CalendarEventForm({ event, defaultDate, onSubmit, onCancel }: Pr
   };
 
   return (
-    <form id="calendar-event-form" onSubmit={handleSubmit(handleFormSubmit)} style={{ padding: '16px 24px' }}>
-      <div className="form-group">
-        <label htmlFor="calendar-title">Название турнира *</label>
-        <input type="text" id="calendar-title" placeholder="Турнир 5х5 CS2" {...register('title')} />
-        {errors.title && <small style={{ color: '#ef4444' }}>{errors.title.message}</small>}
-      </div>
-      <div className="form-row">
-        <div className="form-group">
-          <label htmlFor="calendar-discipline">Дисциплина</label>
-          <select id="calendar-discipline" {...register('discipline')}>
-            <option value="">Выберите дисциплину</option>
-            {disciplines.map((d) => (
-              <option key={d.id} value={d.name}>{d.name}</option>
-            ))}
-          </select>
-        </div>
-        <div className="form-group">
-          <label htmlFor="calendar-date">Дата *</label>
-          <input type="date" id="calendar-date" {...register('eventDate')} />
-        </div>
-      </div>
-      <div className="form-row">
-        <div className="form-group">
-          <label htmlFor="calendar-start-time">Время начала (МСК)</label>
-          <input type="time" id="calendar-start-time" {...register('startTime')} />
-        </div>
-        <div className="form-group">
-          <label htmlFor="calendar-prize">Призовой фонд</label>
-          <input type="text" id="calendar-prize" placeholder="100 000 ₽" {...register('prize')} />
-        </div>
-      </div>
-      <div className="form-group">
-        <label htmlFor="calendar-max-teams">Количество команд</label>
-        <input type="number" id="calendar-max-teams" placeholder="16" min="2" {...register('maxTeams')} />
-      </div>
-      <div className="form-group">
-        <label htmlFor="calendar-description">Описание</label>
-        <textarea id="calendar-description" rows={3} placeholder="Краткое описание" {...register('description')} />
-      </div>
-      <div className="form-group">
-        <label htmlFor="calendar-image">Картинка (URL)</label>
-        <input type="text" id="calendar-image" placeholder="https://..." {...register('imageUrl')} />
-      </div>
-      <div className="form-group">
-        <label htmlFor="calendar-registration-link">Ссылка на регистрацию</label>
-        <input type="text" id="calendar-registration-link" placeholder="https://forms.gle/..." {...register('registrationLink')} />
-      </div>
-      <div className="form-group">
-        <label htmlFor="calendar-custom-link">Пользовательская ссылка</label>
-        <input type="text" id="calendar-custom-link" placeholder="https://..." {...register('customLink')} />
-      </div>
-      <div className="form-group">
-        <label htmlFor="calendar-watch-url">Ссылка на трансляцию</label>
-        <input type="text" id="calendar-watch-url" placeholder="https://twitch.tv/..." {...register('watchUrl')} />
-      </div>
-      <div className="modal-footer">
-        <button type="button" className="btn-secondary" onClick={onCancel}>Отмена</button>
-        <button type="submit" className="btn-primary">Сохранить</button>
-      </div>
+    <form onSubmit={handleSubmit(handleFormSubmit)}>
+      <Stack spacing={2.5} sx={{ pt: 1 }}>
+        <Controller
+          name="title"
+          control={control}
+          render={({ field }) => (
+            <TextField {...field} label="Название" required error={!!errors.title} helperText={errors.title?.message} />
+          )}
+        />
+
+        <Controller
+          name="discipline"
+          control={control}
+          render={({ field }) => (
+            <TextField {...field} select label="Дисциплина">
+              <MenuItem value="">Без дисциплины</MenuItem>
+              {disciplines.map((d) => (
+                <MenuItem key={d.id} value={d.name}>{d.name}</MenuItem>
+              ))}
+            </TextField>
+          )}
+        />
+
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          <Controller
+            name="eventDate"
+            control={control}
+            render={({ field }) => (
+              <DatePicker
+                label="Дата"
+                value={field.value ? dayjs(field.value) : null}
+                onChange={(val: Dayjs | null) => field.onChange(val ? val.format('YYYY-MM-DD') : '')}
+                slotProps={{
+                  textField: {
+                    required: true,
+                    error: !!errors.eventDate,
+                    helperText: errors.eventDate?.message,
+                    fullWidth: true,
+                  },
+                }}
+              />
+            )}
+          />
+          <Controller
+            name="startTime"
+            control={control}
+            render={({ field }) => (
+              <TimePicker
+                label="Время начала (МСК)"
+                ampm={false}
+                value={field.value ? dayjs(`2000-01-01T${field.value}`) : null}
+                onChange={(val: Dayjs | null) => field.onChange(val ? val.format('HH:mm') : '')}
+                slotProps={{
+                  textField: { fullWidth: true },
+                }}
+              />
+            )}
+          />
+        </Box>
+
+        <Controller
+          name="prize"
+          control={control}
+          render={({ field }) => (
+            <TextField {...field} label="Призовой фонд" placeholder="100 000 ₽" />
+          )}
+        />
+
+        <Controller
+          name="maxTeams"
+          control={control}
+          render={({ field }) => (
+            <TextField {...field} type="number" label="Количество команд" inputProps={{ min: 2 }} />
+          )}
+        />
+
+        <Controller
+          name="description"
+          control={control}
+          render={({ field }) => (
+            <TextField {...field} label="Описание" multiline rows={3} />
+          )}
+        />
+
+        <Controller
+          name="imageUrl"
+          control={control}
+          render={({ field }) => (
+            <TextField {...field} label="URL изображения" placeholder="https://..." />
+          )}
+        />
+
+        <Controller
+          name="registrationLink"
+          control={control}
+          render={({ field }) => (
+            <TextField {...field} label="Ссылка на регистрацию" placeholder="https://forms.gle/..." />
+          )}
+        />
+
+        <Controller
+          name="customLink"
+          control={control}
+          render={({ field }) => (
+            <TextField {...field} label="Пользовательская ссылка" placeholder="https://..." />
+          )}
+        />
+
+        <Controller
+          name="watchUrl"
+          control={control}
+          render={({ field }) => (
+            <TextField {...field} label="Ссылка на трансляцию" placeholder="https://twitch.tv/..." />
+          )}
+        />
+
+        <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end', pt: 1 }}>
+          <Button onClick={onCancel}>Отмена</Button>
+          <Button type="submit" variant="contained" disabled={isSubmitting}>
+            Сохранить
+          </Button>
+        </Box>
+      </Stack>
     </form>
   );
 }

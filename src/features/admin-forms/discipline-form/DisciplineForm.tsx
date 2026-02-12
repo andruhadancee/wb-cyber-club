@@ -1,6 +1,11 @@
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import TextField from '@mui/material/TextField';
+import Stack from '@mui/material/Stack';
+import Button from '@mui/material/Button';
+import Box from '@mui/material/Box';
+import Typography from '@mui/material/Typography';
 import type { Discipline } from '@/entities/discipline/types';
 
 const schema = z.object({
@@ -17,7 +22,11 @@ interface Props {
 }
 
 export function DisciplineForm({ discipline, onSubmit, onCancel }: Props) {
-  const { register, handleSubmit, formState: { errors } } = useForm<FormValues>({
+  const {
+    control,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: discipline
       ? { name: discipline.name, color: discipline.color || '#8b5abf' }
@@ -29,23 +38,46 @@ export function DisciplineForm({ discipline, onSubmit, onCancel }: Props) {
   };
 
   return (
-    <form id="discipline-edit-form" onSubmit={handleSubmit(handleFormSubmit)} style={{ padding: '16px 24px' }}>
-      <div className="form-group">
-        <label htmlFor="discipline-edit-name">Название дисциплины *</label>
-        <input type="text" id="discipline-edit-name" {...register('name')} />
-        {errors.name && <small style={{ color: '#ef4444' }}>{errors.name.message}</small>}
-      </div>
-      <div className="form-group">
-        <label htmlFor="discipline-edit-color">Цвет дисциплины</label>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-          <input type="color" id="discipline-edit-color" {...register('color')} style={{ width: 60, height: 40, cursor: 'pointer', borderRadius: 4 }} />
-        </div>
-        <small>Цвет для календаря и фильтров</small>
-      </div>
-      <div className="modal-footer">
-        <button type="button" className="btn-secondary" onClick={onCancel}>Отмена</button>
-        <button type="submit" className="btn-primary">Сохранить</button>
-      </div>
+    <form onSubmit={handleSubmit(handleFormSubmit)}>
+      <Stack spacing={2.5} sx={{ pt: 1 }}>
+        <Controller
+          name="name"
+          control={control}
+          render={({ field }) => (
+            <TextField {...field} label="Название дисциплины" required error={!!errors.name} helperText={errors.name?.message} />
+          )}
+        />
+
+        <Controller
+          name="color"
+          control={control}
+          render={({ field }) => (
+            <Box>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+                Цвет дисциплины
+              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <input
+                  type="color"
+                  value={field.value || '#8b5abf'}
+                  onChange={field.onChange}
+                  style={{ width: 48, height: 36, cursor: 'pointer', border: 'none', borderRadius: 4 }}
+                />
+                <Typography variant="body2" color="text.secondary">
+                  {field.value}
+                </Typography>
+              </Box>
+            </Box>
+          )}
+        />
+
+        <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end', pt: 1 }}>
+          <Button onClick={onCancel}>Отмена</Button>
+          <Button type="submit" variant="contained" disabled={isSubmitting}>
+            Сохранить
+          </Button>
+        </Box>
+      </Stack>
     </form>
   );
 }

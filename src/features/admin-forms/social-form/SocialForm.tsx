@@ -1,11 +1,18 @@
 import { useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
+import TextField from '@mui/material/TextField';
+import Stack from '@mui/material/Stack';
+import Button from '@mui/material/Button';
+import Typography from '@mui/material/Typography';
+import Box from '@mui/material/Box';
+import SaveIcon from '@mui/icons-material/Save';
 import { useSocialLinkStore } from '@/entities/social-link/model';
+import { showSuccess, showError } from '@/shared/lib/toast';
 import type { SocialLinks } from '@/entities/social-link/types';
 
 export function SocialForm() {
   const { links, fetchAll, save } = useSocialLinkStore();
-  const { register, handleSubmit, reset } = useForm<SocialLinks>();
+  const { control, handleSubmit, reset } = useForm<SocialLinks>();
 
   useEffect(() => {
     fetchAll();
@@ -18,37 +25,31 @@ export function SocialForm() {
   const onSubmit = async (data: SocialLinks) => {
     try {
       await save(data);
-      alert('Социальные ссылки сохранены!');
+      showSuccess('Социальные ссылки сохранены!');
     } catch (error) {
-      alert('Ошибка: ' + (error instanceof Error ? error.message : String(error)));
+      showError('Ошибка: ' + (error instanceof Error ? error.message : String(error)));
     }
   };
 
   return (
-    <div className="links-container">
-      <h2>Настройка социальных кнопок</h2>
-      <p className="hint">Укажите ссылки для кнопок в шапке сайта</p>
+    <Box>
+      <Typography variant="h6" gutterBottom>
+        Настройка социальных кнопок
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+        Укажите ссылки для кнопок в шапке сайта
+      </Typography>
       <form onSubmit={handleSubmit(onSubmit)}>
-        <div className="links-grid">
-          <div className="link-item">
-            <label>Twitch</label>
-            <input type="text" className="social-input" placeholder="https://..." {...register('twitch')} />
-          </div>
-          <div className="link-item">
-            <label>Telegram</label>
-            <input type="text" className="social-input" placeholder="https://..." {...register('telegram')} />
-          </div>
-          <div className="link-item">
-            <label>Discord</label>
-            <input type="text" className="social-input" placeholder="https://..." {...register('discord')} />
-          </div>
-          <div className="link-item">
-            <label>Связаться с нами</label>
-            <input type="text" className="social-input" placeholder="https://..." {...register('contact')} />
-          </div>
-        </div>
-        <button type="submit" className="btn-primary">Сохранить ссылки</button>
+        <Stack spacing={2} sx={{ maxWidth: 600 }}>
+          <Controller name="twitch" control={control} render={({ field }) => <TextField {...field} label="Twitch" placeholder="https://..." />} />
+          <Controller name="telegram" control={control} render={({ field }) => <TextField {...field} label="Telegram" placeholder="https://..." />} />
+          <Controller name="discord" control={control} render={({ field }) => <TextField {...field} label="Discord" placeholder="https://..." />} />
+          <Controller name="contact" control={control} render={({ field }) => <TextField {...field} label="Связаться с нами" placeholder="https://..." />} />
+        </Stack>
+        <Button type="submit" variant="contained" startIcon={<SaveIcon />} sx={{ mt: 3 }}>
+          Сохранить ссылки
+        </Button>
       </form>
-    </div>
+    </Box>
   );
 }

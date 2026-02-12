@@ -1,69 +1,79 @@
+import { memo } from 'react';
+import Box from '@mui/material/Box';
+import Chip from '@mui/material/Chip';
+import { alpha, useTheme } from '@mui/material/styles';
 import { useDisciplineStore } from '@/entities/discipline/model';
 import { getDisciplineIconUrl } from '@/shared/lib/discipline-icons';
-import { getDisciplineColor } from '@/shared/lib/discipline-colors';
 
 interface Props {
   selected: string;
   onSelect: (discipline: string) => void;
-  /** Ограничить только этими дисциплинами (если переданы) */
   availableDisciplines?: string[];
-  /** Показывать цветной фон кнопок (как в календаре) */
   colored?: boolean;
 }
 
-export function DisciplineFilter({
+export const DisciplineFilter = memo(function DisciplineFilter({
   selected,
   onSelect,
   availableDisciplines,
-  colored = false,
 }: Props) {
-  const { disciplines, colorsMap } = useDisciplineStore();
+  const { disciplines } = useDisciplineStore();
+  const theme = useTheme();
 
   const names = disciplines.map((d) => d.name);
   const filtered = availableDisciplines
     ? names.filter((n) => availableDisciplines.includes(n))
     : names;
 
+  const chipSx = (isActive: boolean) => ({
+    transition: 'all 0.2s ease',
+    fontWeight: isActive ? 600 : 500,
+    ...(isActive && {
+      boxShadow: `0 2px 8px ${alpha(theme.palette.primary.main, 0.3)}`,
+    }),
+    '&:hover': {
+      transform: 'translateY(-1px)',
+    },
+  });
+
   return (
-    <div className="filters-container">
-      <div className="filter-label">Фильтр по дисциплинам:</div>
-      <div className="filters">
-        <button
-          className={`filter-btn${selected === 'all' ? ' active' : ''}`}
+    <Box sx={{ mb: 3.5 }}>
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+        <Chip
+          label="Все"
+          variant={selected === 'all' ? 'filled' : 'outlined'}
+          color={selected === 'all' ? 'primary' : 'default'}
           onClick={() => onSelect('all')}
-        >
-          Все
-        </button>
+          sx={chipSx(selected === 'all')}
+        />
         {filtered.map((name) => {
           const iconUrl = getDisciplineIconUrl(
             name,
             disciplines.find((d) => d.name === name)?.logo_url,
           );
-          const color = colored
-            ? getDisciplineColor(name, colorsMap[name])
-            : undefined;
-
+          const isActive = selected === name;
           return (
-            <button
+            <Chip
               key={name}
-              className={`filter-btn${selected === name ? ' active' : ''}`}
+              label={name}
+              variant={isActive ? 'filled' : 'outlined'}
+              color={isActive ? 'primary' : 'default'}
               onClick={() => onSelect(name)}
-              style={
-                color
-                  ? { background: color, borderColor: color, opacity: 0.75, filter: 'brightness(0.85)' }
-                  : undefined
+              avatar={
+                iconUrl ? (
+                  <Box
+                    component="img"
+                    src={iconUrl}
+                    alt={name}
+                    sx={{ width: 20, height: 20, borderRadius: '50%' }}
+                  />
+                ) : undefined
               }
-            >
-              {iconUrl ? (
-                <img src={iconUrl} className="discipline-icon" alt={name} />
-              ) : (
-                <span className="discipline-icon discipline-icon-emoji">🎮</span>
-              )}{' '}
-              {name}
-            </button>
+              sx={chipSx(isActive)}
+            />
           );
         })}
-      </div>
-    </div>
+      </Box>
+    </Box>
   );
-}
+});

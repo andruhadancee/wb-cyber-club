@@ -1,24 +1,26 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, memo } from 'react';
+import Chip from '@mui/material/Chip';
+import { alpha, useTheme } from '@mui/material/styles';
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import { useInterval } from '@/shared/hooks/useInterval';
 import { parseTournamentDateTime } from '@/shared/lib/date';
+import { pulseGlow } from '@/shared/lib/animations';
 
 interface Props {
   dateStr: string;
   startTime?: string | null;
 }
 
-export function CountdownTimer({ dateStr, startTime }: Props) {
+export const CountdownTimer = memo(function CountdownTimer({ dateStr, startTime }: Props) {
+  const theme = useTheme();
+
   const calcRemaining = useCallback(() => {
-    if (!startTime) {
-      // Без времени старта не показываем таймер
-      return null;
-    }
+    if (!startTime) return null;
     const target = parseTournamentDateTime(dateStr, startTime);
     if (!target) return null;
-
     const diff = target.getTime() - Date.now();
     if (diff <= 0) return { ended: true, days: 0, hours: 0, minutes: 0 };
-
     return {
       ended: false,
       days: Math.floor(diff / (1000 * 60 * 60 * 24)),
@@ -29,32 +31,42 @@ export function CountdownTimer({ dateStr, startTime }: Props) {
 
   const [remaining, setRemaining] = useState(calcRemaining);
 
-  useInterval(() => {
-    setRemaining(calcRemaining());
-  }, 60000);
+  useInterval(() => setRemaining(calcRemaining()), 60000);
 
   if (!remaining) return null;
 
   if (remaining.ended) {
     return (
-      <div className="timer-container">
-        <div className="timer-badge timer-ended">Турнир начался</div>
-      </div>
+      <Chip
+        icon={<PlayArrowIcon />}
+        label="LIVE"
+        color="success"
+        size="small"
+        sx={{
+          fontWeight: 700,
+          letterSpacing: '0.05em',
+          animation: `${pulseGlow} 2s ease-in-out infinite`,
+        }}
+      />
     );
   }
 
+  const parts: string[] = [];
+  if (remaining.days > 0) parts.push(`${remaining.days}д`);
+  parts.push(`${remaining.hours}ч`);
+  if (remaining.minutes > 0) parts.push(`${remaining.minutes}м`);
+
   return (
-    <div className="timer-container">
-      <div className="timer-badge">
-        <span className="timer-label">До начала:</span>
-        {remaining.days > 0 && (
-          <span className="timer-value">{remaining.days}д</span>
-        )}
-        <span className="timer-value">{remaining.hours}ч</span>
-        {remaining.minutes > 0 && (
-          <span className="timer-value">{remaining.minutes}м</span>
-        )}
-      </div>
-    </div>
+    <Chip
+      icon={<AccessTimeIcon />}
+      label={parts.join(' ')}
+      variant="outlined"
+      size="small"
+      sx={{
+        fontWeight: 600,
+        borderColor: alpha(theme.palette.primary.main, 0.3),
+        color: 'primary.main',
+      }}
+    />
   );
-}
+});

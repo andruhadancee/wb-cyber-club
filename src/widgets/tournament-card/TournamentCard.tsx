@@ -1,76 +1,103 @@
-import { useScrollAnimation } from '@/features/scroll-animation/useScrollAnimation';
+import { memo } from 'react';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import Typography from '@mui/material/Typography';
+import Chip from '@mui/material/Chip';
+import Box from '@mui/material/Box';
+import Stack from '@mui/material/Stack';
+import Divider from '@mui/material/Divider';
+import GroupsIcon from '@mui/icons-material/Groups';
+import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
+import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import { CountdownTimer } from '@/features/countdown-timer/CountdownTimer';
 import { TournamentButton } from '@/features/tournament-button/TournamentButton';
 import { getDisciplineIconUrl } from '@/shared/lib/discipline-icons';
 import { formatDateForDisplay } from '@/shared/lib/date';
+import { staggerItem } from '@/shared/lib/animations';
 import type { Tournament } from '@/entities/tournament/types';
 
 interface Props {
   tournament: Tournament;
   regLink: string;
+  index?: number;
 }
 
-export function TournamentCard({ tournament, regLink }: Props) {
-  const ref = useScrollAnimation<HTMLDivElement>();
+export const TournamentCard = memo(function TournamentCard({ tournament, regLink, index = 0 }: Props) {
   const iconUrl = getDisciplineIconUrl(tournament.discipline);
 
   return (
-    <div
-      ref={ref}
-      className="tournament-card"
-      data-discipline={tournament.discipline}
-      id={`tournament-card-${tournament.id}`}
-    >
-      <div className="tournament-card-header">
-        <h2>{tournament.title}</h2>
-      </div>
+    <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column', ...staggerItem(index) }}>
+      <CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column', p: 2.5 }}>
+        {/* Header: Discipline chip */}
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
+          <Chip
+            label={tournament.discipline}
+            size="small"
+            color="primary"
+            variant="outlined"
+            avatar={
+              iconUrl ? (
+                <Box component="img" src={iconUrl} alt={tournament.discipline} sx={{ width: 18, height: 18, borderRadius: '50%' }} />
+              ) : undefined
+            }
+          />
+          <CountdownTimer dateStr={tournament.date} startTime={tournament.start_time} />
+        </Box>
 
-      <div className="tournament-info">
-        <div className="info-item">
-          <span className="info-label">Дисциплина</span>
-          <span className="info-value">
-            <span className="discipline-with-icon">
-              {iconUrl ? (
-                <img src={iconUrl} className="discipline-icon" alt={tournament.discipline} />
-              ) : (
-                <span className="discipline-icon discipline-icon-emoji">🎮</span>
-              )}
-              <span>{tournament.discipline}</span>
-            </span>
-          </span>
-        </div>
-        <div className="info-item">
-          <span className="info-label">Дата</span>
-          <span className="info-value">{formatDateForDisplay(tournament.date)}</span>
-        </div>
-        {tournament.start_time && (
-          <div className="info-item">
-            <span className="info-label">Время старта</span>
-            <span className="info-value">
-              {tournament.start_time.split(':').slice(0, 2).join(':')} МСК
-            </span>
-          </div>
-        )}
-        <div className="info-item">
-          <span className="info-label">Призовой фонд</span>
-          <span className="info-value">{tournament.prize}</span>
-        </div>
-        <div className="info-item">
-          <span className="info-label">Команд</span>
-          <span className="info-value">
-            {tournament.teams || 0} / {tournament.max_teams}
-          </span>
-        </div>
-      </div>
+        {/* Title */}
+        <Typography variant="h6" component="h2" fontWeight={700} sx={{ mb: 2, lineHeight: 1.3 }}>
+          {tournament.title}
+        </Typography>
 
-      <CountdownTimer dateStr={tournament.date} startTime={tournament.start_time} />
+        <Divider sx={{ mb: 2, opacity: 0.5 }} />
 
-      <TournamentButton
-        date={tournament.date}
-        startTime={tournament.start_time}
-        regLink={regLink}
-        watchUrl={tournament.watch_url}
-      />
-    </div>
+        {/* Info rows */}
+        <Stack spacing={1.5} sx={{ flex: 1 }}>
+          <InfoRow icon={<CalendarTodayIcon />} label="Дата">
+            {formatDateForDisplay(tournament.date)}
+            {tournament.start_time && (
+              <Typography component="span" variant="body2" color="text.secondary" sx={{ ml: 0.5, fontSize: '0.8rem' }}>
+                {tournament.start_time.split(':').slice(0, 2).join(':')} МСК
+              </Typography>
+            )}
+          </InfoRow>
+          <InfoRow icon={<EmojiEventsIcon />} label="Призовой фонд">
+            <Typography component="span" sx={{ fontWeight: 700, color: 'warning.main' }}>
+              {tournament.prize}
+            </Typography>
+          </InfoRow>
+          <InfoRow icon={<GroupsIcon />} label="Команд">
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <Typography component="span" fontWeight={600}>
+                {tournament.teams || 0}
+              </Typography>
+              <Typography component="span" color="text.secondary" fontSize="0.85rem">
+                / {tournament.max_teams}
+              </Typography>
+            </Box>
+          </InfoRow>
+        </Stack>
+
+        <TournamentButton
+          date={tournament.date}
+          startTime={tournament.start_time}
+          regLink={regLink}
+          watchUrl={tournament.watch_url}
+        />
+      </CardContent>
+    </Card>
+  );
+});
+
+function InfoRow({ icon, label, children }: { icon: React.ReactNode; label: string; children: React.ReactNode }) {
+  return (
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+      <Box sx={{ color: 'primary.main', display: 'flex', opacity: 0.7, '& svg': { fontSize: 18 } }}>{icon}</Box>
+      <Typography variant="body2" color="text.secondary" sx={{ minWidth: 75, fontSize: '0.82rem' }}>
+        {label}
+      </Typography>
+      <Box sx={{ fontSize: '0.88rem' }}>{children}</Box>
+    </Box>
   );
 }

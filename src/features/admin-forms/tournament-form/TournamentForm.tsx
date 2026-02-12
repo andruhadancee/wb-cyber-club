@@ -1,7 +1,15 @@
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useEffect } from 'react';
+import dayjs, { type Dayjs } from 'dayjs';
+import TextField from '@mui/material/TextField';
+import MenuItem from '@mui/material/MenuItem';
+import Stack from '@mui/material/Stack';
+import Button from '@mui/material/Button';
+import Box from '@mui/material/Box';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { TimePicker } from '@mui/x-date-pickers/TimePicker';
 import { useDisciplineStore } from '@/entities/discipline/model';
 import type { Tournament } from '@/entities/tournament/types';
 
@@ -10,7 +18,7 @@ const schema = z.object({
   discipline: z.string().min(1, 'Выберите дисциплину'),
   date: z.string().min(1, 'Укажите дату'),
   prize: z.string().min(1, 'Укажите призовой фонд'),
-  maxTeams: z.coerce.number().min(2).optional(),
+  maxTeams: z.coerce.number().min(2, 'Минимум 2').optional(),
   teams: z.coerce.number().min(0).optional(),
   customLink: z.string().optional(),
   startTime: z.string().optional(),
@@ -45,9 +53,15 @@ function parseDate(dateStr: string): string {
 export function TournamentForm({ tournament, isPast = false, onSubmit, onCancel }: Props) {
   const { disciplines, fetchAll } = useDisciplineStore();
 
-  useEffect(() => { fetchAll(); }, [fetchAll]);
+  useEffect(() => {
+    fetchAll();
+  }, [fetchAll]);
 
-  const { register, handleSubmit, formState: { errors } } = useForm<FormValues>({
+  const {
+    control,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: tournament
       ? {
@@ -64,7 +78,7 @@ export function TournamentForm({ tournament, isPast = false, onSubmit, onCancel 
           winner: tournament.winner || '',
           status: isPast ? 'finished' : 'active',
         }
-      : { status: isPast ? 'finished' : 'active' },
+      : { status: isPast ? 'finished' : 'active', maxTeams: 16, teams: 0 },
   });
 
   const handleFormSubmit = async (data: FormValues) => {
@@ -72,100 +86,143 @@ export function TournamentForm({ tournament, isPast = false, onSubmit, onCancel 
   };
 
   return (
-    <form id="tournament-form" onSubmit={handleSubmit(handleFormSubmit)}>
-      <div className="form-group">
-        <label htmlFor="tournament-name">Название турнира *</label>
-        <input type="text" id="tournament-name" placeholder="Турнир 5X5 CS2" {...register('title')} />
-        {errors.title && <small style={{ color: '#ef4444' }}>{errors.title.message}</small>}
-      </div>
+    <form onSubmit={handleSubmit(handleFormSubmit)}>
+      <Stack spacing={2.5} sx={{ pt: 1 }}>
+        <Controller
+          name="title"
+          control={control}
+          render={({ field }) => (
+            <TextField {...field} label="Название турнира" required error={!!errors.title} helperText={errors.title?.message} />
+          )}
+        />
 
-      <div className="form-row">
-        <div className="form-group">
-          <label htmlFor="tournament-discipline">Дисциплина *</label>
-          <select id="tournament-discipline" {...register('discipline')}>
-            <option value="">Выберите дисциплину</option>
-            {disciplines.map((d) => (
-              <option key={d.id} value={d.name}>{d.name}</option>
-            ))}
-          </select>
-          {errors.discipline && <small style={{ color: '#ef4444' }}>{errors.discipline.message}</small>}
-        </div>
-        <div className="form-group">
-          <label htmlFor="tournament-date">Дата турнира *</label>
-          <input type="date" id="tournament-date" {...register('date')} />
-        </div>
-      </div>
+        <Controller
+          name="discipline"
+          control={control}
+          render={({ field }) => (
+            <TextField {...field} select label="Дисциплина" required error={!!errors.discipline} helperText={errors.discipline?.message}>
+              <MenuItem value="">Выберите</MenuItem>
+              {disciplines.map((d) => (
+                <MenuItem key={d.id} value={d.name}>{d.name}</MenuItem>
+              ))}
+            </TextField>
+          )}
+        />
 
-      {!isPast && (
-        <div className="form-row">
-          <div className="form-group">
-            <label htmlFor="tournament-start-time">Время начала (МСК) *</label>
-            <input type="time" id="tournament-start-time" {...register('startTime')} />
-            <small>Время начала турнира по московскому времени</small>
-          </div>
-          <div className="form-group">
-            <label htmlFor="tournament-prize">Призовой фонд *</label>
-            <input type="text" id="tournament-prize" placeholder="25 000 ₽" {...register('prize')} />
-          </div>
-        </div>
-      )}
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          <Controller
+            name="date"
+            control={control}
+            render={({ field }) => (
+              <DatePicker
+                label="Дата"
+                value={field.value ? dayjs(field.value) : null}
+                onChange={(val: Dayjs | null) => field.onChange(val ? val.format('YYYY-MM-DD') : '')}
+                slotProps={{
+                  textField: {
+                    required: true,
+                    error: !!errors.date,
+                    helperText: errors.date?.message,
+                    fullWidth: true,
+                  },
+                }}
+              />
+            )}
+          />
+          {!isPast && (
+            <Controller
+              name="startTime"
+              control={control}
+              render={({ field }) => (
+                <TimePicker
+                  label="Время начала (МСК)"
+                  ampm={false}
+                  value={field.value ? dayjs(`2000-01-01T${field.value}`) : null}
+                  onChange={(val: Dayjs | null) => field.onChange(val ? val.format('HH:mm') : '')}
+                  slotProps={{
+                    textField: {
+                      fullWidth: true,
+                      helperText: 'Московское время',
+                    },
+                  }}
+                />
+              )}
+            />
+          )}
+        </Box>
 
-      {isPast && (
-        <div className="form-group">
-          <label htmlFor="tournament-prize">Призовой фонд *</label>
-          <input type="text" id="tournament-prize" placeholder="25 000 ₽" {...register('prize')} />
-        </div>
-      )}
+        <Controller
+          name="prize"
+          control={control}
+          render={({ field }) => (
+            <TextField {...field} label="Призовой фонд" required placeholder="25 000 ₽" error={!!errors.prize} helperText={errors.prize?.message} />
+          )}
+        />
 
-      <div className="form-row">
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          {!isPast && (
+            <Controller
+              name="maxTeams"
+              control={control}
+              render={({ field }) => (
+                <TextField {...field} type="number" label="Максимум команд" inputProps={{ min: 2 }} sx={{ flex: 1 }} />
+              )}
+            />
+          )}
+          {isPast && (
+            <Controller
+              name="teams"
+              control={control}
+              render={({ field }) => (
+                <TextField {...field} type="number" label="Участвовало команд" inputProps={{ min: 0 }} helperText="Фактическое количество" sx={{ flex: 1 }} />
+              )}
+            />
+          )}
+        </Box>
+
         {!isPast && (
-          <div className="form-group">
-            <label htmlFor="tournament-max-teams">Максимум команд *</label>
-            <input type="number" id="tournament-max-teams" placeholder="16" min="2" {...register('maxTeams')} />
-          </div>
+          <Controller
+            name="customLink"
+            control={control}
+            render={({ field }) => (
+              <TextField {...field} label="Ссылка на регистрацию" placeholder="https://forms.gle/..." helperText="Если пусто, будет из настроек" />
+            )}
+          />
         )}
+
+        <Controller
+          name="watchUrl"
+          control={control}
+          render={({ field }) => (
+            <TextField {...field} label="Ссылка на трансляцию" placeholder="https://twitch.tv/..." helperText="Кнопка появится в момент старта" />
+          )}
+        />
+
+        <Controller
+          name="imageUrl"
+          control={control}
+          render={({ field }) => (
+            <TextField {...field} label="URL изображения" placeholder="https://..." helperText="Для карточки в архиве" />
+          )}
+        />
+
         {isPast && (
-          <div className="form-group">
-            <label htmlFor="tournament-teams">Количество участвующих команд *</label>
-            <input type="number" id="tournament-teams" placeholder="12" min="0" {...register('teams')} />
-            <small>Фактическое количество команд</small>
-          </div>
+          <Controller
+            name="winner"
+            control={control}
+            render={({ field }) => (
+              <TextField {...field} label="Победитель" placeholder="Название команды" />
+            )}
+          />
         )}
-      </div>
 
-      {!isPast && (
-        <div className="form-group">
-          <label htmlFor="tournament-custom-link">Пользовательская ссылка</label>
-          <input type="text" id="tournament-custom-link" placeholder="https://forms.gle/..." {...register('customLink')} />
-          <small>Если не указана, будет использована ссылка из настроек</small>
-        </div>
-      )}
-
-      <div className="form-group">
-        <label htmlFor="tournament-watch-url">Ссылка на трансляцию</label>
-        <input type="text" id="tournament-watch-url" placeholder="https://twitch.tv/..." {...register('watchUrl')} />
-        <small>Кнопка появится в момент старта</small>
-      </div>
-
-      <div className="form-group">
-        <label htmlFor="tournament-image-url">Изображение турнира</label>
-        <input type="text" id="tournament-image-url" placeholder="https://..." {...register('imageUrl')} />
-        <small>Ссылка на изображение для архива</small>
-      </div>
-
-      {isPast && (
-        <div className="form-group">
-          <label htmlFor="tournament-winner">Победитель</label>
-          <input type="text" id="tournament-winner" placeholder="Название команды-победителя" {...register('winner')} />
-        </div>
-      )}
-
-      <input type="hidden" {...register('status')} />
-
-      <div className="modal-footer">
-        <button type="button" className="btn-secondary" onClick={onCancel}>Отмена</button>
-        <button type="submit" className="btn-primary">Сохранить</button>
-      </div>
+        <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end', pt: 1 }}>
+          <Button onClick={onCancel}>Отмена</Button>
+          <Button type="submit" variant="contained" disabled={isSubmitting}>
+            Сохранить
+          </Button>
+        </Box>
+      </Stack>
     </form>
   );
 }

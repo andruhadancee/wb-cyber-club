@@ -1,9 +1,0 @@
-/*
- * Глобальные стили WB Cyber Club
- * Импортируем существующие CSS файлы для полной визуальной совместимости.
- * Постепенно можно рефакторить в CSS Modules.
- */
-
-@import '../../../css/style.css';
-@import '../../../css/admin.css';
-@import '../../../css/skeleton.css';

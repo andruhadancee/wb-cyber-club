@@ -1,7 +1,14 @@
 import { useState, useEffect } from 'react';
+import TextField from '@mui/material/TextField';
+import Stack from '@mui/material/Stack';
+import Button from '@mui/material/Button';
+import Typography from '@mui/material/Typography';
+import Box from '@mui/material/Box';
+import SaveIcon from '@mui/icons-material/Save';
 import { useDisciplineStore } from '@/entities/discipline/model';
 import { linksApi, type RegistrationLinks } from '@/shared/api/linksApi';
 import { getDisciplineIconUrl } from '@/shared/lib/discipline-icons';
+import { showSuccess, showError } from '@/shared/lib/toast';
 
 export function LinksForm() {
   const { disciplines, fetchAll } = useDisciplineStore();
@@ -19,41 +26,42 @@ export function LinksForm() {
   const handleSave = async () => {
     try {
       await linksApi.save(links);
-      alert('Ссылки сохранены!');
+      showSuccess('Ссылки сохранены!');
     } catch (error) {
-      alert('Ошибка сохранения: ' + (error instanceof Error ? error.message : String(error)));
+      showError('Ошибка сохранения: ' + (error instanceof Error ? error.message : String(error)));
     }
   };
 
   return (
-    <div className="links-container">
-      <h2>Ссылки на формы регистрации</h2>
-      <p className="hint">Укажите ссылки на Google Forms для каждой дисциплины</p>
-      <div className="links-grid">
+    <Box>
+      <Typography variant="h6" gutterBottom>
+        Ссылки на формы регистрации
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+        Укажите ссылки на Google Forms для каждой дисциплины
+      </Typography>
+      <Stack spacing={2} sx={{ maxWidth: 600 }}>
         {disciplines.map((d) => {
           const iconUrl = getDisciplineIconUrl(d.name, d.logo_url);
           return (
-            <div className="link-item" key={d.id}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                {iconUrl ? (
-                  <img src={iconUrl} className="discipline-icon" alt={d.name} />
-                ) : (
-                  <span className="discipline-icon discipline-icon-emoji">🎮</span>
-                )}
-                <label style={{ marginBottom: 0, flex: 1 }}>{d.name}</label>
-              </div>
-              <input
-                type="text"
-                className="link-input"
+            <Box key={d.id} sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              {iconUrl && (
+                <Box component="img" src={iconUrl} alt={d.name} sx={{ width: 24, height: 24, borderRadius: '50%', flexShrink: 0 }} />
+              )}
+              <TextField
+                label={d.name}
                 value={links[d.name] || ''}
                 onChange={(e) => handleChange(d.name, e.target.value)}
                 placeholder="https://..."
+                fullWidth
               />
-            </div>
+            </Box>
           );
         })}
-      </div>
-      <button className="btn-primary" onClick={handleSave}>Сохранить ссылки</button>
-    </div>
+      </Stack>
+      <Button variant="contained" startIcon={<SaveIcon />} onClick={handleSave} sx={{ mt: 3 }}>
+        Сохранить ссылки
+      </Button>
+    </Box>
   );
 }
