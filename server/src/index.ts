@@ -15,9 +15,12 @@ import prisma from './prisma';
 const app = express();
 
 // ── Security ──
+const isProd = config.NODE_ENV === 'production';
 app.use(helmet({
   contentSecurityPolicy: false,
   crossOriginEmbedderPolicy: false,
+  // HSTS only in production (behind SSL). On dev it forces https:// which breaks access.
+  hsts: isProd ? { maxAge: 31536000, includeSubDomains: true } : false,
 }));
 
 // ── Performance ──
