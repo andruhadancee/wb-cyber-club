@@ -1,0 +1,61 @@
+services:
+  # ── Nginx (reverse proxy + SSL) ──
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/templates:/etc/nginx/templates:ro
+      - ./certbot/www:/var/www/certbot:ro
+      - ./certbot/conf:/etc/letsencrypt:ro
+    environment:
+      - DOMAIN=${DOMAIN}
+    depends_on:
+      - app
+    restart: unless-stopped
+
+  # ── Certbot (SSL-сертификаты Let's Encrypt) ──
+  certbot:
+    image: certbot/certbot
+    volumes:
+      - ./certbot/www:/var/www/certbot
+      - ./certbot/conf:/etc/letsencrypt
+    # Автообновление каждые 12 часов
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot --quiet; sleep 12h & wait $${!}; done'"
+    restart: unless-stopped
+
+  # ── App (Express + React static) ──
+  app:
+    build: .
+    expose:
+      - "3000"
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-cyberclub}:${POSTGRES_PASSWORD:-cyberclub}@postgres:5432/${POSTGRES_DB:-cyberclub}
+      - PORT=3000
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ── PostgreSQL ──
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-cyberclub}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-cyberclub}
+      - POSTGRES_DB=${POSTGRES_DB:-cyberclub}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-cyberclub}"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  pgdata:

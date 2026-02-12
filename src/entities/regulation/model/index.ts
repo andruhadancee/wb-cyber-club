@@ -1,0 +1,1 @@
+export { useRegulationStore } from './store';

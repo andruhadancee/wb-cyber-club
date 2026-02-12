@@ -1,0 +1,1 @@
+export { useDisciplineStore } from './store';

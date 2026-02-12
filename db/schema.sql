@@ -14,6 +14,8 @@ CREATE TABLE IF NOT EXISTS tournaments (
     status VARCHAR(50) DEFAULT 'active',
     winner VARCHAR(255),
     watch_url TEXT,
+    start_time TIME,
+    image_url TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -31,6 +33,8 @@ CREATE TABLE IF NOT EXISTS calendar_events (
     registration_link TEXT,
     custom_link TEXT,
     tournament_id INTEGER,
+    start_time TIME,
+    watch_url TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

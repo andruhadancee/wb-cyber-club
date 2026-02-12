@@ -1,272 +1,228 @@
-# WB Cyber Club - Сайт регистрации на турниры
+# WB Cyber Club
 
-Современный сайт-визитка для киберспортивного клуба с системой управления турнирами.
+Платформа киберспортивных турниров. React SPA + Express API + PostgreSQL.
 
-## 🎮 Возможности
+## Стек
 
-### Для игроков:
-- 📋 Просмотр активных турниров с фильтрацией по дисциплинам
-- 👥 Список зарегистрированных команд
-- 🏆 Архив прошедших турниров
-- 📝 Быстрая регистрация через внешние формы
-- ⏰ Автоматическое закрытие регистрации за 3 часа до старта турнира
-- 📺 Кнопка "Смотреть турнир" во время трансляции
-- 📅 Календарь активностей с визуализацией идущих турниров
-
-### Для администраторов:
-- ➕ Добавление новых турниров с указанием времени начала (МСК)
-- ✏️ Редактирование турниров
-- 🗑️ Удаление турниров
-- 📦 Автоматический перенос в архив в 23:59 дня турнира
-- 🔄 Ручной перенос в архив одним кликом
-- 🔗 Управление ссылками на формы регистрации
-- 📺 Настройка ссылок на трансляции турниров
-- 📅 Добавление событий в календарь
-
-## 🚀 Установка
-
-### Вариант 1: Локальный запуск (для разработки)
-
-1. Скачайте все файлы проекта
-2. Откройте терминал в папке проекта
-3. Запустите сервер:
-```bash
-node server.js
-```
-4. Откройте браузер: `http://localhost:3000`
-
-**Пароль админ-панели:** `admin123`
-
-### Вариант 2: На хостинге Veroid (Node.js)
-
-1. В панели Veroid создайте сервер с [Bot] Node.js
-2. Загрузите все файлы проекта через FTP или файловый менеджер
-3. В настройках сервера укажите:
-   - **Главный файл:** `server.js`
-   - **Команда запуска:** `node server.js`
-4. Запустите сервер
-5. Сервер будет доступен по выданному IP или домену
-
-### Вариант 2: С Firebase (рекомендуется для production)
-
-1. Создайте проект в [Firebase Console](https://console.firebase.google.com/)
-
-2. Включите сервисы:
-   - **Firestore Database** (для хранения турниров)
-   - **Authentication** (для авторизации админов)
-
-3. Скопируйте конфигурацию Firebase и вставьте в `js/firebase-config.js`
-
-4. Добавьте Firebase SDK в HTML (перед закрывающим тегом `</body>`):
-
-```html
-<!-- Firebase SDK -->
-<script src="https://www.gstatic.com/firebasejs/9.x.x/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.x.x/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.x.x/firebase-auth-compat.js"></script>
-<script src="js/firebase-config.js"></script>
-```
-
-## 📁 Структура проекта
-
-```
-wb-cyber-club/
-├── index.html              # Главная страница (активные турниры)
-├── teams.html              # Зарегистрированные команды
-├── archive.html            # Прошедшие турниры
-├── admin.html              # Админ-панель
-├── css/
-│   ├── style.css          # Основные стили
-│   └── admin.css          # Стили админ-панели
-├── js/
-│   ├── tournaments-data.js # База данных турниров
-│   ├── main.js            # Главная страница
-│   ├── teams.js           # Страница команд
-│   ├── archive.js         # Архив турниров
-│   ├── admin.js           # Логика админ-панели
-│   └── firebase-config.js # Конфигурация Firebase
-└── README.md              # Документация
-```
-
-## 🎨 Дизайн
-
-Сайт использует цветовую схему WB Cyber Club:
-- **Фон:** Градиент от темно-синего (#0a0a14) через фиолетовый (#6b2d8f) к розовому (#d946aa)
-- **Акценты:** Ярко-розовый (#ec4899)
-- **Карточки:** Полупрозрачные с эффектом размытия (glass-morphism)
-- **Шрифт:** Inter (временно, заменить на ALS Hauss VF)
-
-## 🔧 Настройка форм регистрации
-
-1. Создайте Google Forms для каждой дисциплины
-2. Откройте админ-панель (`admin.html`)
-3. Перейдите на вкладку "Ссылки на формы"
-4. Вставьте ссылки для каждой дисциплины
-5. Нажмите "Сохранить"
-
-## 🗄️ Миграция базы данных
-
-**✅ Автоматическая миграция!** Система сама добавит новые поля при первом запуске API.
-
-Но если хотите выполнить вручную:
-
-1. Зайдите в Neon Dashboard: https://console.neon.tech
-2. Выберите свою базу
-3. Откройте SQL Editor
-4. Выполните файл `db/add-start-time.sql`
-
-Или выполните вручную:
-```sql
-ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS start_time TIME;
-ALTER TABLE calendar_events ADD COLUMN IF NOT EXISTS start_time TIME;
-```
-
-## 📤 Загрузка на хостинг Veroid
-
-### Шаг 1: Подготовка файлов
-1. Убедитесь, что все файлы в одной папке
-2. Проверьте, что пути к CSS и JS файлам корректны
-
-### Шаг 2: Загрузка
-1. Войдите в панель управления Veroid
-2. Перейдите в раздел "Файловый менеджер"
-3. Загрузите все файлы в корневую директорию `public_html/` или `www/`
-4. Убедитесь, что `index.html` находится в корне
-
-### Шаг 3: Настройка домена
-1. В панели Veroid привяжите свой домен
-2. Настройте DNS записи (A-запись на IP хостинга)
-3. Подождите 24 часа для распространения DNS
-
-### Шаг 4: Проверка
-1. Откройте сайт по адресу вашего домена
-2. Проверьте все страницы
-3. Зайдите в админ-панель и протестируйте функционал
-
-## 🔐 Безопасность
-
-**ВАЖНО!** Для production использования:
-
-1. **Замените простую авторизацию на Firebase Authentication**
-2. **Настройте правила безопасности Firestore:**
-
-```javascript
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    // Только авторизованные админы могут писать
-    match /tournaments/{tournament} {
-      allow read: if true;
-      allow write: if request.auth != null && request.auth.token.admin == true;
-    }
-  }
-}
-```
-
-3. **Добавьте HTTPS (обычно Veroid предоставляет бесплатный SSL)**
-
-## 🎯 Как использовать
-
-### Добавление турнира:
-1. Откройте `admin.html`
-2. Введите пароль: `admin123`
-3. Нажмите "Добавить турнир" (или через вкладку "Календарь")
-4. Заполните форму:
-   - Название (например: "Турнир 5X5 CS2 WBCYBERCLUB")
-   - Дисциплина (выберите из списка)
-   - Дата турнира
-   - **Время начала (МСК)** - например: 18:00 (обязательное поле!)
-   - Призовой фонд (например: "25 000 ₽")
-   - Максимум команд (например: 16)
-   - **Ссылка на трансляцию** - https://twitch.tv/... (необязательно)
-5. Нажмите "Сохранить"
-
-**Важно:** Указание времени начала позволяет:
-- Автоматически закрыть регистрацию за 3 часа до старта
-- Показать кнопку "Смотреть турнир" во время трансляции
-- Автоматически перенести турнир в архив в 23:59 дня проведения
-
-### Редактирование турнира:
-1. В админ-панели нажмите "Изменить" на нужном турнире
-2. Измените данные
-3. Нажмите "Сохранить"
-
-### Перенос в архив:
-**Автоматически:** В 23:59 дня турнира он автоматически переносится в архив
-
-**Вручную:** Нажмите "Перенести в архив" на нужном турнире в разделе "Активные турниры"
-
-### Удаление турнира:
-1. Нажмите "Удалить" на нужном турнире
-2. Подтвердите действие
-
-## 🌐 Подключение шрифта ALS Hauss VF
-
-Когда получите файлы шрифта:
-
-1. Создайте папку `fonts/` в корне проекта
-2. Поместите файлы шрифта туда
-3. В `css/style.css` замените импорт Inter на:
-
-```css
-@font-face {
-    font-family: 'ALS Hauss VF';
-    src: url('../fonts/ALSHaussVF.woff2') format('woff2'),
-         url('../fonts/ALSHaussVF.woff') format('woff');
-    font-weight: 100 900;
-    font-display: swap;
-}
-
-:root {
-    --font-main: 'ALS Hauss VF', sans-serif;
-}
-
-body {
-    font-family: var(--font-main);
-}
-```
-
-## 📞 Контакты
-
-Для настройки соцсетей отредактируйте ссылки в header всех HTML файлов:
-
-```html
-<a href="https://twitch.tv/YOUR_CHANNEL" class="social-btn twitch">
-<a href="https://t.me/YOUR_CHANNEL" class="social-btn telegram">
-<a href="https://forms.gle/CONTACT_FORM" class="btn-contact">
-```
-
-## 🐛 Возможные проблемы
-
-### Сайт не открывается на Veroid
-- Проверьте, что `index.html` в корневой директории
-- Проверьте права доступа к файлам (должны быть 644)
-
-### Не работает админ-панель
-- Очистите кэш браузера
-- Проверьте консоль браузера (F12) на ошибки
-- Убедитесь, что все JS файлы загружены
-
-### Турниры не сохраняются
-- Проверьте localStorage браузера
-- Убедитесь, что сайт открыт по HTTP/HTTPS, а не через file://
-
-## 📝 Лицензия
-
-Проект создан для WB Cyber Club.
-
-## 🚀 Дальнейшее развитие
-
-Возможные улучшения:
-- ✅ Интеграция с Firebase
-- ✅ Полноценная авторизация админов
-- 📊 Статистика команд и турниров
-- 🎥 Галерея фото/видео с турниров
-- 💬 Система комментариев
-- 📱 PWA для мобильных устройств
-- 🔔 Push-уведомления о новых турнирах
+**Frontend:** React, TypeScript, Zustand, React Hook Form, Zod, Vite, FSD  
+**Backend:** Express.js, Node.js, PostgreSQL (`pg`)  
+**Инфраструктура:** Docker, Nginx, Let's Encrypt (Certbot)
 
 ---
 
-**Приятного использования! 🎮✨**
+## Деплой на Timeweb Cloud (пошагово)
 
+### Шаг 1. Купить VPS
+
+1. Зайди на [cloud.timeweb.com](https://cloud.timeweb.com) и зарегистрируйся
+2. **Облачные серверы** -> **Создать**
+3. Параметры:
+   - **ОС:** Ubuntu 22.04
+   - **Конфигурация:** минимальная (1 vCPU / 1 GB RAM / 15 GB SSD)
+   - **Регион:** Москва или Санкт-Петербург
+4. Запомни **пароль root** и **IP-адрес** сервера (например `185.104.xx.xx`)
+
+### Шаг 2. Привязать домен
+
+В панели управления твоего регистратора домена:
+
+1. Перейди в **DNS-настройки** домена
+2. Добавь (или измени) **A-запись**:
+   - **Имя:** `@` (корень домена)
+   - **Значение:** IP-адрес сервера Timeweb
+3. Если нужен `www`, добавь ещё одну A-запись:
+   - **Имя:** `www`
+   - **Значение:** тот же IP
+4. Подожди 5-30 минут (иногда до 24 часов), пока DNS обновится
+
+Проверить: `ping your-domain.com` — должен показать IP сервера.
+
+### Шаг 3. Подключиться к серверу
+
+Открой терминал (PowerShell, Git Bash, или встроенный в Cursor):
+
+```bash
+ssh root@185.104.xx.xx
+# Введи пароль root
+```
+
+### Шаг 4. Установить Docker и Git
+
+```bash
+curl -fsSL https://get.docker.com | sh
+apt install git -y
+```
+
+### Шаг 5. Клонировать проект
+
+```bash
+git clone https://github.com/<username>/wb-cyber-club.git /opt/wb-cyber-club
+cd /opt/wb-cyber-club
+```
+
+### Шаг 6. Настроить .env
+
+```bash
+cp .env.example .env
+nano .env
+```
+
+Заполни:
+
+```
+DOMAIN=your-domain.com
+SSL_EMAIL=your@email.com
+POSTGRES_USER=cyberclub
+POSTGRES_PASSWORD=<придумай надёжный пароль>
+POSTGRES_DB=cyberclub
+PORT=3000
+DATABASE_URL=postgresql://cyberclub:<тот же пароль>@postgres:5432/cyberclub
+```
+
+> `DOMAIN` — твой домен (например `cyberclub.ru`)  
+> `SSL_EMAIL` — твоя почта (для уведомлений Let's Encrypt)  
+> `POSTGRES_PASSWORD` — любой пароль, БД создаётся локально в Docker  
+> `DATABASE_URL` — подставь тот же пароль в строку подключения
+
+Сохрани: `Ctrl+O` -> `Enter` -> `Ctrl+X`
+
+### Шаг 7. Запустить
+
+```bash
+bash scripts/deploy.sh
+```
+
+Скрипт автоматически:
+- Соберёт Docker-образ (фронтенд + бэкенд)
+- Поднимет PostgreSQL и накатит схему БД
+- Запустит Nginx с HTTPS
+- Получит SSL-сертификат от Let's Encrypt
+
+### Шаг 8. Готово
+
+Открывай в браузере:
+- Сайт: `https://your-domain.com`
+- Админка: `https://your-domain.com/admin` (пароль: `admin123`)
+
+---
+
+## Обновление сайта
+
+```bash
+ssh root@185.104.xx.xx
+cd /opt/wb-cyber-club
+bash scripts/deploy.sh
+```
+
+Скрипт сам сделает `git pull`, пересоберёт образ и перезапустит контейнеры. Даунтайм — несколько секунд.
+
+---
+
+## Полезные команды (на сервере)
+
+```bash
+docker compose logs -f          # логи всех сервисов
+docker compose logs -f app      # логи только Express
+docker compose ps               # статус контейнеров
+docker compose down              # остановить всё
+docker compose up -d --build    # пересобрать и запустить
+docker compose exec postgres psql -U cyberclub  # зайти в БД
+```
+
+---
+
+## Локальная разработка
+
+### Вариант 1: с Docker (рекомендуется)
+
+```bash
+# Поднять только PostgreSQL
+docker compose up postgres -d
+
+# Настроить .env
+cp .env.example .env
+# В .env изменить DATABASE_URL на:
+# DATABASE_URL=postgresql://cyberclub:cyberclub@localhost:5432/cyberclub
+
+# Установить зависимости
+npm install
+
+# Терминал 1 — бэкенд
+npm run dev:server   # Express API на http://localhost:3000
+
+# Терминал 2 — фронтенд
+npm run dev          # Vite на http://localhost:5173 (proxy на :3000)
+```
+
+### Вариант 2: без Docker
+
+Установи PostgreSQL локально, создай базу `cyberclub`, выполни `db/schema.sql`, настрой `.env`.
+
+---
+
+## Скрипты
+
+| Команда | Описание |
+|---------|----------|
+| `npm run dev` | Vite dev server (фронтенд, порт 5173) |
+| `npm run dev:server` | Express сервер (бэкенд, порт 3000) |
+| `npm run build` | TypeScript check + Vite build |
+| `npm start` | Production: Express раздаёт `dist/` + API |
+| `bash scripts/deploy.sh` | Полный деплой (первый запуск или обновление) |
+| `bash scripts/init-ssl.sh` | Получение SSL-сертификата |
+
+---
+
+## Архитектура
+
+```
+Internet -> Nginx (SSL, gzip, cache)
+                |
+          Express :3000
+          |- /api/*      -> API routes (PostgreSQL)
+          |- /*           -> React SPA (dist/)
+                |
+          PostgreSQL :5432
+```
+
+## Структура проекта
+
+```
+wb-cyber-club/
+|- src/                    # Frontend (FSD)
+|  |- app/                 # Роутер, точка входа, глобальные стили
+|  |- pages/               # Страницы
+|  |- widgets/             # Составные UI-блоки
+|  |- features/            # Фичи
+|  |- entities/            # Доменные сущности
+|  |- shared/              # API, утилиты, хуки, UI
+|- server/                 # Backend (Express)
+|  |- index.js             # Точка входа
+|  |- db.js                # PostgreSQL Pool
+|  |- routes/              # API-роутеры
+|- nginx/templates/        # Nginx конфиг
+|- scripts/                # Скрипты деплоя
+|  |- deploy.sh            # Полный деплой
+|  |- init-ssl.sh          # Получение SSL
+|- db/                     # SQL схема
+|- docker-compose.yml      # Production stack
+|- Dockerfile              # Multi-stage build
+|- .env.example            # Шаблон переменных окружения
+```
+
+## API
+
+| Путь | Методы | Описание |
+|------|--------|----------|
+| `/api/tournaments` | GET, POST, PUT, DELETE | Турниры |
+| `/api/teams` | GET, POST, PUT, DELETE | Команды |
+| `/api/calendar` | GET, POST, PUT, DELETE | Календарь событий |
+| `/api/disciplines` | GET, POST, PUT, DELETE | Дисциплины |
+| `/api/links` | GET, POST | Ссылки на регистрацию |
+| `/api/regulations` | GET, POST, PUT, DELETE | Регламенты |
+| `/api/social` | GET, POST | Социальные ссылки |
+| `/api/archive-auto` | GET | Авто-архивирование |
+
+## Админ-панель
+
+Доступна по `/admin`. Пароль: `admin123`.
