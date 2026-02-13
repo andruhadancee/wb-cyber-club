@@ -26,7 +26,8 @@ interface ModalProps {
   onClose: () => void;
   title: string;
   children: ReactNode;
-  confirmClose?: boolean;
+  /** If true — always confirm. If a function — confirm only when it returns true (e.g. form isDirty). */
+  confirmClose?: boolean | (() => boolean);
   confirmMessage?: string;
   maxWidth?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
   actions?: ReactNode;
@@ -46,7 +47,8 @@ export function Modal({
   const theme = useTheme();
 
   const handleClose = useCallback(() => {
-    if (confirmClose) {
+    const shouldConfirm = typeof confirmClose === 'function' ? confirmClose() : confirmClose;
+    if (shouldConfirm) {
       setConfirmOpen(true);
     } else {
       onClose();
@@ -86,7 +88,6 @@ export function Modal({
           </Typography>
           <IconButton
             onClick={handleClose}
-            size="small"
             aria-label="Закрыть"
             sx={{
               transition: 'all 0.2s ease',

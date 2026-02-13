@@ -12,6 +12,7 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { TimePicker } from '@mui/x-date-pickers/TimePicker';
 import { useDisciplineStore } from '@/entities/discipline/model';
 import type { Tournament } from '@/entities/tournament/types';
+import { normalizeTimeToHHmm } from '@/shared/lib/date';
 
 const schema = z.object({
   title: z.string().min(1, 'Обязательное поле'),
@@ -35,6 +36,7 @@ interface Props {
   isPast?: boolean;
   onSubmit: (data: FormValues & { id?: number }) => Promise<void>;
   onCancel: () => void;
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
 function parseDate(dateStr: string): string {
@@ -50,7 +52,7 @@ function parseDate(dateStr: string): string {
   return dateStr;
 }
 
-export function TournamentForm({ tournament, isPast = false, onSubmit, onCancel }: Props) {
+export function TournamentForm({ tournament, isPast = false, onSubmit, onCancel, onDirtyChange }: Props) {
   const { disciplines, fetchAll } = useDisciplineStore();
 
   useEffect(() => {
@@ -60,7 +62,7 @@ export function TournamentForm({ tournament, isPast = false, onSubmit, onCancel 
   const {
     control,
     handleSubmit,
-    formState: { errors, isSubmitting },
+    formState: { errors, isSubmitting, isDirty },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: tournament
@@ -72,14 +74,29 @@ export function TournamentForm({ tournament, isPast = false, onSubmit, onCancel 
           maxTeams: tournament.max_teams,
           teams: tournament.teams || 0,
           customLink: tournament.custom_link || '',
-          startTime: tournament.start_time || '',
+          startTime: normalizeTimeToHHmm(tournament.start_time),
           watchUrl: tournament.watch_url || '',
           imageUrl: tournament.image_url || '',
           winner: tournament.winner || '',
           status: isPast ? 'finished' : 'active',
         }
-      : { status: isPast ? 'finished' : 'active', maxTeams: 16, teams: 0 },
+      : {
+          status: isPast ? 'finished' : 'active',
+          maxTeams: 16,
+          teams: 0,
+          title: '',
+          discipline: '',
+          date: '',
+          prize: '',
+          customLink: '',
+          startTime: '',
+          watchUrl: '',
+          imageUrl: '',
+          winner: '',
+        },
   });
+
+  useEffect(() => { onDirtyChange?.(isDirty); }, [isDirty, onDirtyChange]);
 
   const handleFormSubmit = async (data: FormValues) => {
     await onSubmit({ ...data, id: tournament?.id });
@@ -211,7 +228,7 @@ export function TournamentForm({ tournament, isPast = false, onSubmit, onCancel 
             name="winner"
             control={control}
             render={({ field }) => (
-              <TextField {...field} label="Победитель" placeholder="Название команды" />
+              <TextField {...field} label="Победитель" placeholder="Название команды" autoComplete="off" />
             )}
           />
         )}

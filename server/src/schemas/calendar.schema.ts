@@ -12,6 +12,7 @@ export const createCalendarEventSchema = z.object({
   customLink: z.string().nullish(),
   startTime: z.string().nullish(),
   watchUrl: z.string().nullish(),
+  tournamentId: z.number().int().positive().nullish(),
 });
 
 export const updateCalendarEventSchema = createCalendarEventSchema.extend({

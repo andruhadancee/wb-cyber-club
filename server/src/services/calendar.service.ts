@@ -29,55 +29,35 @@ export async function getAll(month?: string): Promise<CalendarEvent[]> {
 }
 
 export async function create(data: CreateCalendarEventInput): Promise<CalendarEvent> {
-  let tournamentId: number | null = null;
+  let tournamentId: number | null = data.tournamentId ?? null;
 
-  // Auto-create tournament if full tournament data provided
-  if (data.discipline && data.prize && data.maxTeams) {
-    const existing = await prisma.tournament.findFirst({
-      where: {
+  // Link to existing tournament by id if provided
+  if (tournamentId) {
+    const existing = await prisma.tournament.findUnique({ where: { id: tournamentId } });
+    if (!existing) throw AppError.notFound('Турнир не найден');
+  } else if (data.discipline && data.prize && data.maxTeams) {
+    // Auto-create tournament if full tournament data provided (but no tournamentId)
+    const created = await prisma.tournament.create({
+      data: {
         title: data.title,
-        date: data.eventDate,
         discipline: data.discipline,
+        date: data.eventDate,
+        prize: data.prize,
+        max_teams: data.maxTeams,
+        custom_link: data.customLink || data.registrationLink || null,
         status: 'active',
+        teams: 0,
+        watch_url: data.watchUrl || null,
+        start_time: data.startTime ? new Date(`1970-01-01T${data.startTime}`) : null,
       },
     });
-
-    if (existing) {
-      tournamentId = existing.id;
-      if (data.watchUrl?.trim()) {
-        await prisma.tournament.update({
-          where: { id: existing.id },
-          data: { watch_url: data.watchUrl.trim(), updated_at: new Date() },
-        });
-      }
-    } else {
-      const created = await prisma.tournament.create({
-        data: {
-          title: data.title,
-          discipline: data.discipline,
-          date: data.eventDate,
-          prize: data.prize,
-          max_teams: data.maxTeams,
-          custom_link: data.customLink || data.registrationLink || null,
-          status: 'active',
-          teams: 0,
-          watch_url: data.watchUrl || null,
-          start_time: data.startTime ? new Date(`1970-01-01T${data.startTime}`) : null,
-        },
-      });
-      tournamentId = created.id;
-    }
+    tournamentId = created.id;
   }
 
-  // Check for existing event
-  const existingEvent = await prisma.calendarEvent.findFirst({
-    where: {
-      OR: [
-        { tournament_id: tournamentId ?? -1 },
-        { title: data.title, event_date: new Date(data.eventDate) },
-      ],
-    },
-  });
+  // Check for existing event by tournament_id
+  const existingEvent = tournamentId
+    ? await prisma.calendarEvent.findFirst({ where: { tournament_id: tournamentId } })
+    : null;
 
   const eventData = {
     title: data.title,

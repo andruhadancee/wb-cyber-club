@@ -1,6 +1,7 @@
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { useEffect } from 'react';
 import TextField from '@mui/material/TextField';
 import Stack from '@mui/material/Stack';
 import Button from '@mui/material/Button';
@@ -19,19 +20,22 @@ interface Props {
   discipline?: Discipline | null;
   onSubmit: (data: FormValues & { id?: number }) => Promise<void>;
   onCancel: () => void;
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
-export function DisciplineForm({ discipline, onSubmit, onCancel }: Props) {
+export function DisciplineForm({ discipline, onSubmit, onCancel, onDirtyChange }: Props) {
   const {
     control,
     handleSubmit,
-    formState: { errors, isSubmitting },
+    formState: { errors, isSubmitting, isDirty },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: discipline
       ? { name: discipline.name, color: discipline.color || '#8b5abf' }
       : { color: '#8b5abf' },
   });
+
+  useEffect(() => { onDirtyChange?.(isDirty); }, [isDirty, onDirtyChange]);
 
   const handleFormSubmit = async (data: FormValues) => {
     await onSubmit({ ...data, id: discipline?.id });

@@ -41,7 +41,6 @@ export function BracketPage() {
         <Button
           startIcon={<ArrowBackIcon />}
           onClick={() => navigate(-1)}
-          size="small"
           sx={{ textTransform: 'none' }}
         >
           Назад

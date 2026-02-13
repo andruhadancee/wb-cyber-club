@@ -49,10 +49,10 @@ export async function update(data: UpdateDisciplineInput): Promise<Discipline> {
   return discipline;
 }
 
-export async function removeByName(name: string): Promise<void> {
-  const discipline = await prisma.discipline.findFirst({ where: { name } });
+export async function remove(id: number): Promise<void> {
+  const discipline = await prisma.discipline.findUnique({ where: { id } });
   if (!discipline) throw AppError.notFound('Дисциплина не найдена');
 
-  await prisma.discipline.delete({ where: { id: discipline.id } });
+  await prisma.discipline.delete({ where: { id } });
   invalidateCache();
 }

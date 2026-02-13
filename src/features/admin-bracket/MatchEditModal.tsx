@@ -212,7 +212,6 @@ export function MatchEditModal({ match, tournamentId, onClose, onSaved }: MatchE
             <Chip
               key={opt.value}
               label={opt.label}
-              size="small"
               color={status === opt.value ? opt.color : 'default'}
               variant={status === opt.value ? 'filled' : 'outlined'}
               onClick={() => setStatus(opt.value)}
@@ -251,12 +250,11 @@ export function MatchEditModal({ match, tournamentId, onClose, onSaved }: MatchE
                     </Typography>
                     <Box sx={{ display: 'flex', gap: 0.5, ml: 1 }}>
                       {isEliminated && (
-                        <Chip label="Выбыла" size="small" color="error" variant="outlined"
+                        <Chip label="Выбыла" color="error" variant="outlined"
                           sx={{ height: 20, fontSize: '0.65rem', opacity: 0.8 }} />
                       )}
                       {isAssigned && !isEliminated && (
-                        <Chip label="В матче" size="small"
-                          sx={{ height: 20, fontSize: '0.65rem', opacity: 0.7 }} />
+                        <Chip label="В матче"                          sx={{ height: 20, fontSize: '0.65rem', opacity: 0.7 }} />
                       )}
                     </Box>
                   </Box>
@@ -267,7 +265,6 @@ export function MatchEditModal({ match, tournamentId, onClose, onSaved }: MatchE
               <TextField
                 {...params}
                 label="Команда 1"
-                size="small"
                 placeholder={canEditTeams ? 'Выберите команду' : ''}
               />
             )}
@@ -312,12 +309,11 @@ export function MatchEditModal({ match, tournamentId, onClose, onSaved }: MatchE
                     </Typography>
                     <Box sx={{ display: 'flex', gap: 0.5, ml: 1 }}>
                       {isEliminated && (
-                        <Chip label="Выбыла" size="small" color="error" variant="outlined"
+                        <Chip label="Выбыла" color="error" variant="outlined"
                           sx={{ height: 20, fontSize: '0.65rem', opacity: 0.8 }} />
                       )}
                       {isAssigned && !isEliminated && (
-                        <Chip label="В матче" size="small"
-                          sx={{ height: 20, fontSize: '0.65rem', opacity: 0.7 }} />
+                        <Chip label="В матче"                          sx={{ height: 20, fontSize: '0.65rem', opacity: 0.7 }} />
                       )}
                     </Box>
                   </Box>
@@ -328,7 +324,6 @@ export function MatchEditModal({ match, tournamentId, onClose, onSaved }: MatchE
               <TextField
                 {...params}
                 label="Команда 2"
-                size="small"
                 placeholder={canEditTeams ? 'Выберите команду' : ''}
               />
             )}
@@ -497,7 +492,6 @@ function TeamColumn({
         onClick={(e) => e.stopPropagation()}
       >
         <IconButton
-          size="small"
           onClick={onScoreDown}
           disabled={score <= 0}
           sx={{
@@ -527,7 +521,6 @@ function TeamColumn({
         </Box>
 
         <IconButton
-          size="small"
           onClick={onScoreUp}
           sx={{
             width: 32,

@@ -166,7 +166,6 @@ function AdminContent() {
               <Button
                 startIcon={<LogoutIcon />}
                 onClick={handleLogout}
-                size="small"
                 color="inherit"
                 sx={{ color: 'text.secondary' }}
               >

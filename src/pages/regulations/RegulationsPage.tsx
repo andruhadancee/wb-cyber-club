@@ -78,7 +78,7 @@ export function RegulationsPage() {
                       )}
                     </CardContent>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}>
-                      <Chip label="PDF" size="small" color="error" variant="outlined" />
+                      <Chip label="PDF" color="error" variant="outlined" />
                       <OpenInNewIcon fontSize="small" sx={{ color: 'text.secondary', opacity: 0.5 }} />
                     </Box>
                   </CardActionArea>

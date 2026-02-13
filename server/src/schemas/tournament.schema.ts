@@ -1,12 +1,32 @@
 import { z } from 'zod';
 
+/** Strip base64 data URIs and empty strings → null; keep valid URLs */
 const safeUrl = z
   .string()
-  .refine((v) => !v || !v.startsWith('data:'), { message: 'Base64 data URIs не допускаются' })
-  .nullish();
+  .nullish()
+  .transform((v) => {
+    if (!v || !v.trim()) return null;
+    if (v.trim().startsWith('data:')) return null;
+    return v.trim();
+  });
 
+/** Accept "HH:mm" or ISO date string (e.g. "1970-01-01T18:00:00.000Z") */
 const timeString = z
   .string()
+  .transform((v) => {
+    if (!v) return v;
+    const trimmed = v.trim();
+    // Already in HH:mm
+    if (/^\d{1,2}:\d{2}$/.test(trimmed)) return trimmed;
+    // ISO date string — extract HH:mm in UTC
+    const d = new Date(trimmed);
+    if (!isNaN(d.getTime())) {
+      const hh = String(d.getUTCHours()).padStart(2, '0');
+      const mm = String(d.getUTCMinutes()).padStart(2, '0');
+      return `${hh}:${mm}`;
+    }
+    return trimmed;
+  })
   .refine((v) => !v || /^\d{1,2}:\d{2}$/.test(v.trim()), { message: 'Формат времени: HH:mm' })
   .nullish();
 

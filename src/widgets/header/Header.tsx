@@ -158,7 +158,6 @@ export const Header = memo(function Header() {
             rel="noopener noreferrer"
             icon={<TelegramIcon sx={{ fontSize: 18 }} />}
             label={isMobile ? undefined : 'Telegram'}
-            size="small"
             clickable
             variant="outlined"
             sx={{
@@ -215,7 +214,6 @@ export const Header = memo(function Header() {
           </Box>
           <IconButton
             onClick={handleDrawerToggle}
-            size="small"
             sx={{
               color: 'text.secondary',
               '&:hover': { color: 'text.primary', transform: 'rotate(90deg)' },

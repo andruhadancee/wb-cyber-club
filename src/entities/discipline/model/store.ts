@@ -9,7 +9,7 @@ interface DisciplineState {
   fetchAll: () => Promise<void>;
   createDiscipline: (name: string, color?: string | null) => Promise<void>;
   updateDiscipline: (id: number, data: Partial<Pick<Discipline, 'name' | 'color'>>) => Promise<void>;
-  removeDiscipline: (name: string) => Promise<void>;
+  removeDiscipline: (id: number) => Promise<void>;
 }
 
 export const useDisciplineStore = create<DisciplineState>((set, get) => ({
@@ -41,8 +41,8 @@ export const useDisciplineStore = create<DisciplineState>((set, get) => ({
     await get().fetchAll();
   },
 
-  removeDiscipline: async (name) => {
-    await disciplineApi.remove(name);
+  removeDiscipline: async (id) => {
+    await disciplineApi.remove(id);
     await get().fetchAll();
   },
 }));

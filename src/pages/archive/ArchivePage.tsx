@@ -96,7 +96,6 @@ const ArchiveCard = memo(function ArchiveCard({ tournament, index = 0 }: { tourn
       <CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column', p: 2.5 }}>
         <Chip
           label={tournament.discipline}
-          size="small"
           variant="outlined"
           avatar={
             iconUrl ? (
@@ -132,7 +131,6 @@ const ArchiveCard = memo(function ArchiveCard({ tournament, index = 0 }: { tourn
             icon={<EmojiEventsIcon />}
             label={tournament.winner}
             color="warning"
-            size="small"
             sx={{ alignSelf: 'flex-start', mt: 1.5, fontWeight: 600 }}
           />
         )}
@@ -142,7 +140,6 @@ const ArchiveCard = memo(function ArchiveCard({ tournament, index = 0 }: { tourn
             variant="outlined"
             startIcon={<AccountTreeIcon />}
             onClick={() => navigate(`/tournament/${tournament.id}/bracket`)}
-            size="small"
             sx={{ textTransform: 'none', fontSize: '0.78rem' }}
           >
             Сетка
@@ -154,7 +151,6 @@ const ArchiveCard = memo(function ArchiveCard({ tournament, index = 0 }: { tourn
               href={watchUrl}
               target="_blank"
               rel="noopener noreferrer"
-              size="small"
             >
               Смотреть
             </Button>

@@ -12,6 +12,7 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { TimePicker } from '@mui/x-date-pickers/TimePicker';
 import { useDisciplineStore } from '@/entities/discipline/model';
 import type { CalendarEvent } from '@/entities/calendar-event/types';
+import { normalizeTimeToHHmm } from '@/shared/lib/date';
 
 const schema = z.object({
   title: z.string().min(1, 'Обязательное поле'),
@@ -34,9 +35,10 @@ interface Props {
   defaultDate?: string;
   onSubmit: (data: FormValues & { id?: number }) => Promise<void>;
   onCancel: () => void;
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
-export function CalendarEventForm({ event, defaultDate, onSubmit, onCancel }: Props) {
+export function CalendarEventForm({ event, defaultDate, onSubmit, onCancel, onDirtyChange }: Props) {
   const { disciplines, fetchAll } = useDisciplineStore();
 
   useEffect(() => {
@@ -46,7 +48,7 @@ export function CalendarEventForm({ event, defaultDate, onSubmit, onCancel }: Pr
   const {
     control,
     handleSubmit,
-    formState: { errors, isSubmitting },
+    formState: { errors, isSubmitting, isDirty },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: event
@@ -54,7 +56,7 @@ export function CalendarEventForm({ event, defaultDate, onSubmit, onCancel }: Pr
           title: event.title,
           eventDate: (event.event_date || '').slice(0, 10),
           discipline: event.discipline || '',
-          startTime: event.start_time || '',
+          startTime: normalizeTimeToHHmm(event.start_time),
           prize: event.prize || '',
           maxTeams: event.max_teams || undefined,
           description: event.description || '',
@@ -65,6 +67,8 @@ export function CalendarEventForm({ event, defaultDate, onSubmit, onCancel }: Pr
         }
       : { eventDate: defaultDate || '' },
   });
+
+  useEffect(() => { onDirtyChange?.(isDirty); }, [isDirty, onDirtyChange]);
 
   const handleFormSubmit = async (data: FormValues) => {
     await onSubmit({ ...data, id: event?.id });

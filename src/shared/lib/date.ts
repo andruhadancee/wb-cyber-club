@@ -18,6 +18,22 @@ const MONTH_NAMES = [
   'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря',
 ];
 
+/**
+ * Normalize time value to "HH:mm" format.
+ * Accepts "HH:mm", ISO string ("1970-01-01T18:00:00.000Z"), or null/undefined.
+ */
+export function normalizeTimeToHHmm(value: string | null | undefined): string {
+  if (!value) return '';
+  const trimmed = value.trim();
+  if (/^\d{1,2}:\d{2}$/.test(trimmed)) return trimmed;
+  // ISO date string — extract HH:mm in UTC
+  const d = new Date(trimmed);
+  if (!isNaN(d.getTime())) {
+    return `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`;
+  }
+  return '';
+}
+
 /** Форматирует дату для отображения: "12 февраля 2025 г." */
 export function formatDateForDisplay(dateStr: string): string {
   try {

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Box from '@mui/material/Box';
 import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
@@ -37,7 +37,11 @@ import { useDisciplineStore } from '@/entities/discipline/model';
 import { useCalendarStore } from '@/entities/calendar-event/model';
 import { useRegulationStore } from '@/entities/regulation/model';
 import { useBracketStore } from '@/entities/bracket/model';
+import InputAdornment from '@mui/material/InputAdornment';
+import SearchIcon from '@mui/icons-material/Search';
 import { clearCache } from '@/shared/lib/cache';
+import { normalizeTimeToHHmm, formatDateForDisplay } from '@/shared/lib/date';
+import { getDisciplineColor } from '@/shared/lib/discipline-colors';
 import { Modal } from '@/shared/ui/modal/Modal';
 import { showSuccess, showError } from '@/shared/lib/toast';
 import { showConfirm } from '@/shared/ui/confirm-dialog/ConfirmDialog';
@@ -81,7 +85,14 @@ export function AdminPanel() {
   const [filterPast, setFilterPast] = useState('all');
   const [filterTeams, setFilterTeams] = useState('all');
   const [filterCalendar, setFilterCalendar] = useState('all');
+  const [searchActive, setSearchActive] = useState('');
+  const [searchPast, setSearchPast] = useState('');
   const [regLinks, setRegLinks] = useState<Record<string, string>>({});
+
+  // Track whether current form has unsaved changes
+  const formDirtyRef = useRef(false);
+  const isFormDirty = useCallback(() => formDirtyRef.current, []);
+  const handleDirtyChange = useCallback((dirty: boolean) => { formDirtyRef.current = dirty; }, []);
 
   // New discipline form
   const [newDisciplineName, setNewDisciplineName] = useState('');
@@ -130,7 +141,7 @@ export function AdminPanel() {
           await tournamentStore.updateTournament({
             id: t.id, title: t.title, discipline: t.discipline, date: t.date,
             prize: t.prize, maxTeams: t.max_teams, customLink: t.custom_link,
-            status: 'finished', winner: t.winner, watchUrl: t.watch_url, startTime: t.start_time,
+            status: 'finished', winner: t.winner, watchUrl: t.watch_url, startTime: normalizeTimeToHHmm(t.start_time),
           });
           showSuccess('Турнир перенесён в архив');
         } catch (e) {
@@ -184,12 +195,12 @@ export function AdminPanel() {
     }
   };
 
-  const handleDeleteDiscipline = (name: string) => {
+  const handleDeleteDiscipline = (id: number, name: string) => {
     showConfirm({
       message: `Удалить дисциплину "${name}"?`,
       onConfirm: async () => {
         try {
-          await disciplineStore.removeDiscipline(name);
+          await disciplineStore.removeDiscipline(id);
           showSuccess(`Дисциплина "${name}" удалена`);
         } catch (e) {
           showError('Ошибка: ' + (e instanceof Error ? e.message : e));
@@ -298,13 +309,43 @@ export function AdminPanel() {
   const renderTournamentTable = (tournaments: Tournament[], isPast: boolean) => {
     const filter = isPast ? filterPast : filterActive;
     const setFilter = isPast ? setFilterPast : setFilterActive;
+    const search = isPast ? searchPast : searchActive;
+    const setSearch = isPast ? setSearchPast : setSearchActive;
     const available = [...new Set(tournaments.map((t) => t.discipline))];
-    const filtered = filter === 'all' ? tournaments : tournaments.filter((t) => t.discipline === filter);
+    const colorsMap = disciplineStore.colorsMap;
+
+    const filtered = tournaments.filter((t) => {
+      if (filter !== 'all' && t.discipline !== filter) return false;
+      if (search) {
+        const q = search.toLowerCase();
+        return t.title.toLowerCase().includes(q)
+          || t.discipline.toLowerCase().includes(q)
+          || (t.winner?.toLowerCase().includes(q) ?? false)
+          || t.prize.toLowerCase().includes(q);
+      }
+      return true;
+    });
 
     return (
       <>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 1 }}>
+        {/* Toolbar: search + filter + add button */}
+        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2.5, flexWrap: 'wrap', gap: 1.5 }}>
+          <TextField
+            placeholder="Поиск по названию, дисциплине, призу…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            sx={{ width: { xs: '100%', sm: 280 } }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon sx={{ fontSize: 20, color: 'text.disabled' }} />
+                </InputAdornment>
+              ),
+            }}
+          />
           <DisciplineFilter selected={filter} onSelect={setFilter} availableDisciplines={available} />
+          <Box sx={{ flex: 1 }} />
+          <Chip label={`${filtered.length} из ${tournaments.length}`} variant="outlined" />
           <Button
             variant="contained"
             startIcon={<AddIcon />}
@@ -315,55 +356,120 @@ export function AdminPanel() {
         </Box>
 
         {filtered.length === 0 ? (
-          <Typography color="text.secondary" sx={{ py: 4, textAlign: 'center' }}>
-            Нет турниров
-          </Typography>
+          <Paper variant="outlined" sx={{ borderRadius: 3, py: 6, textAlign: 'center' }}>
+            <Typography color="text.secondary">
+              {search ? 'Ничего не найдено' : 'Нет турниров'}
+            </Typography>
+          </Paper>
         ) : (
           <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 3 }}>
-            <Table size="small">
+            <Table>
               <TableHead>
-                <TableRow sx={{ '& th': { fontWeight: 700, fontSize: '0.8rem', letterSpacing: '0.03em', textTransform: 'uppercase', color: 'text.secondary' } }}>
+                <TableRow sx={{
+                  '& th': {
+                    fontWeight: 700, fontSize: '0.75rem', letterSpacing: '0.04em',
+                    textTransform: 'uppercase', color: 'text.secondary',
+                    py: 1.5, whiteSpace: 'nowrap',
+                  },
+                }}>
                   <TableCell>Название</TableCell>
                   <TableCell>Дисциплина</TableCell>
                   <TableCell>Дата</TableCell>
                   <TableCell>Приз</TableCell>
-                  <TableCell align="right">Команд</TableCell>
+                  <TableCell align="center">Команд</TableCell>
                   {isPast && <TableCell>Победитель</TableCell>}
                   <TableCell align="right">Действия</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {filtered.map((t) => (
-                  <TableRow key={t.id} hover>
-                    <TableCell>{t.title}</TableCell>
-                    <TableCell><Chip label={t.discipline} size="small" /></TableCell>
-                    <TableCell>{t.date}</TableCell>
-                    <TableCell>{t.prize}</TableCell>
-                    <TableCell align="right">{isPast ? t.teams || 0 : `${t.teams || 0}/${t.max_teams}`}</TableCell>
-                    {isPast && <TableCell>{t.winner || '—'}</TableCell>}
-                    <TableCell align="right">
-                      <Stack direction="row" spacing={0.25} justifyContent="flex-end">
-                        <Tooltip title="Редактировать">
-                          <IconButton size="small" onClick={() => setTournamentModal({ open: true, tournament: t, isPast })}>
-                            <EditIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                        {!isPast && (
-                          <Tooltip title="В архив">
-                            <IconButton size="small" onClick={() => handleArchive(t)} color="warning">
-                              <ArchiveIcon fontSize="small" />
+                {filtered.map((t) => {
+                  const discColor = getDisciplineColor(t.discipline, colorsMap[t.discipline]);
+                  const time = normalizeTimeToHHmm(t.start_time);
+                  return (
+                    <TableRow
+                      key={t.id}
+                      hover
+                      sx={{
+                        '& td': { py: 1.5, fontSize: '0.875rem' },
+                        cursor: 'pointer',
+                        '&:last-child td': { borderBottom: 0 },
+                      }}
+                      onClick={() => setTournamentModal({ open: true, tournament: t, isPast })}
+                    >
+                      <TableCell>
+                        <Typography sx={{ fontWeight: 600, fontSize: '0.875rem' }}>{t.title}</Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Chip
+                          label={t.discipline}
+                          sx={{
+                            bgcolor: alpha(discColor, 0.12),
+                            color: discColor,
+                            fontWeight: 600,
+                            fontSize: '0.7rem',
+                            height: 24,
+                            borderRadius: '6px',
+                          }}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Box>
+                          <Typography variant="body2">{formatDateForDisplay(t.date)}</Typography>
+                          {time && (
+                            <Typography variant="caption" color="text.secondary">{time} МСК</Typography>
+                          )}
+                        </Box>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" sx={{ fontWeight: 600, color: 'warning.main' }}>
+                          {t.prize}
+                        </Typography>
+                      </TableCell>
+                      <TableCell align="center">
+                        <Chip
+                          label={isPast ? String(t.teams || 0) : `${t.teams || 0}/${t.max_teams}`}
+                          variant="outlined"
+                          sx={{ fontWeight: 600, fontSize: '0.75rem', height: 24, minWidth: 48 }}
+                        />
+                      </TableCell>
+                      {isPast && (
+                        <TableCell>
+                          {t.winner ? (
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                              <EmojiEventsIcon sx={{ fontSize: 16, color: 'success.main' }} />
+                              <Typography variant="body2" sx={{ fontWeight: 600, color: 'success.main' }}>
+                                {t.winner}
+                              </Typography>
+                            </Box>
+                          ) : (
+                            <Typography variant="body2" color="text.disabled">—</Typography>
+                          )}
+                        </TableCell>
+                      )}
+                      <TableCell align="right" onClick={(e) => e.stopPropagation()}>
+                        <Stack direction="row" spacing={0.5} justifyContent="flex-end">
+                          <Tooltip title="Редактировать">
+                            <IconButton onClick={() => setTournamentModal({ open: true, tournament: t, isPast })}>
+                              <EditIcon fontSize="small" />
                             </IconButton>
                           </Tooltip>
-                        )}
-                        <Tooltip title="Удалить">
-                          <IconButton size="small" onClick={() => handleDeleteTournament(t.id)} color="error">
-                            <DeleteIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                      </Stack>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                          {!isPast && (
+                            <Tooltip title="В архив">
+                              <IconButton onClick={() => handleArchive(t)} color="warning">
+                                <ArchiveIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          )}
+                          <Tooltip title="Удалить">
+                            <IconButton onClick={() => handleDeleteTournament(t.id)} color="error">
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        </Stack>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </TableContainer>
@@ -397,7 +503,7 @@ export function AdminPanel() {
                   {t?.title || `Турнир #${tid}`} — {t?.discipline || ''}
                 </Typography>
                 <TableContainer>
-                  <Table size="small">
+                  <Table>
                     <TableHead>
                       <TableRow>
                         <TableCell>Команда</TableCell>
@@ -411,10 +517,10 @@ export function AdminPanel() {
                           <TableCell>{team.name}</TableCell>
                           <TableCell align="right">{team.players}</TableCell>
                           <TableCell align="right">
-                            <IconButton size="small" onClick={() => setTeamModal({ open: true, team })}>
+                            <IconButton onClick={() => setTeamModal({ open: true, team })}>
                               <EditIcon fontSize="small" />
                             </IconButton>
-                            <IconButton size="small" onClick={() => handleDeleteTeam(team.id)} color="error">
+                            <IconButton onClick={() => handleDeleteTeam(team.id)} color="error">
                               <DeleteIcon fontSize="small" />
                             </IconButton>
                           </TableCell>
@@ -462,7 +568,6 @@ export function AdminPanel() {
           label="Новая дисциплина"
           value={newDisciplineName}
           onChange={(e) => setNewDisciplineName(e.target.value)}
-          size="small"
           sx={{ flex: 1 }}
         />
         <input
@@ -471,7 +576,7 @@ export function AdminPanel() {
           onChange={(e) => setNewDisciplineColor(e.target.value)}
           style={{ width: 40, height: 36, cursor: 'pointer', border: 'none', borderRadius: 4 }}
         />
-        <Button variant="contained" onClick={handleAddDiscipline} size="small">
+        <Button variant="contained" onClick={handleAddDiscipline}>
           Добавить
         </Button>
       </Box>
@@ -480,10 +585,10 @@ export function AdminPanel() {
           <Paper key={d.id} variant="outlined" sx={{ p: 1.5, display: 'flex', alignItems: 'center', gap: 1.5 }}>
             <Box sx={{ width: 24, height: 24, borderRadius: 0.5, bgcolor: d.color || '#8b5abf', flexShrink: 0 }} />
             <Typography sx={{ flex: 1 }}>{d.name}</Typography>
-            <IconButton size="small" onClick={() => setDisciplineModal({ open: true, discipline: d })}>
+            <IconButton onClick={() => setDisciplineModal({ open: true, discipline: d })}>
               <EditIcon fontSize="small" />
             </IconButton>
-            <IconButton size="small" onClick={() => handleDeleteDiscipline(d.name)} color="error">
+            <IconButton onClick={() => handleDeleteDiscipline(d.id, d.name)} color="error">
               <DeleteIcon fontSize="small" />
             </IconButton>
           </Paper>
@@ -512,13 +617,13 @@ export function AdminPanel() {
                 {r.discipline_name}
                 {r.regulation_name && <Typography component="span" color="text.secondary"> — {r.regulation_name}</Typography>}
               </Typography>
-              <Button href={r.pdf_url} target="_blank" rel="noopener noreferrer" size="small">
+              <Button href={r.pdf_url} target="_blank" rel="noopener noreferrer">
                 PDF
               </Button>
-              <IconButton size="small" onClick={() => setRegulationModal({ open: true, regulation: r })}>
+              <IconButton onClick={() => setRegulationModal({ open: true, regulation: r })}>
                 <EditIcon fontSize="small" />
               </IconButton>
-              <IconButton size="small" onClick={() => handleDeleteRegulation(r.id)} color="error">
+              <IconButton onClick={() => handleDeleteRegulation(r.id)} color="error">
                 <DeleteIcon fontSize="small" />
               </IconButton>
             </Paper>
@@ -580,7 +685,7 @@ export function AdminPanel() {
         open={tournamentModal.open}
         onClose={() => setTournamentModal({ open: false })}
         title={tournamentModal.tournament ? 'Редактировать турнир' : (tournamentModal.isPast ? 'Добавить прошедший турнир' : 'Добавить турнир')}
-        confirmClose
+        confirmClose={isFormDirty}
       >
         <TournamentForm
           key={tournamentModal.tournament?.id ?? 'new'}
@@ -588,6 +693,7 @@ export function AdminPanel() {
           isPast={tournamentModal.isPast}
           onSubmit={handleTournamentSubmit}
           onCancel={() => setTournamentModal({ open: false })}
+          onDirtyChange={handleDirtyChange}
         />
       </Modal>
 
@@ -596,13 +702,14 @@ export function AdminPanel() {
         open={teamModal.open}
         onClose={() => setTeamModal({ open: false })}
         title={teamModal.team ? 'Редактировать команду' : 'Добавить команду'}
-        confirmClose
+        confirmClose={isFormDirty}
       >
         <TeamForm
           key={teamModal.team?.id ?? 'new'}
           team={teamModal.team}
           onSubmit={handleTeamSubmit}
           onCancel={() => setTeamModal({ open: false })}
+          onDirtyChange={handleDirtyChange}
         />
       </Modal>
 
@@ -611,7 +718,7 @@ export function AdminPanel() {
         open={calendarModal.open}
         onClose={() => setCalendarModal({ open: false })}
         title={calendarModal.event ? 'Изменить событие' : 'Добавить событие'}
-        confirmClose
+        confirmClose={isFormDirty}
       >
         <CalendarEventForm
           key={calendarModal.event?.id ?? 'new'}
@@ -619,6 +726,7 @@ export function AdminPanel() {
           defaultDate={calendarModal.defaultDate}
           onSubmit={handleCalendarSubmit}
           onCancel={() => setCalendarModal({ open: false })}
+          onDirtyChange={handleDirtyChange}
         />
       </Modal>
 
@@ -627,13 +735,14 @@ export function AdminPanel() {
         open={regulationModal.open}
         onClose={() => setRegulationModal({ open: false })}
         title={regulationModal.regulation ? 'Редактировать регламент' : 'Добавить регламент'}
-        confirmClose
+        confirmClose={isFormDirty}
       >
         <RegulationForm
           key={regulationModal.regulation?.id ?? 'new'}
           regulation={regulationModal.regulation}
           onSubmit={handleRegulationSubmit}
           onCancel={() => setRegulationModal({ open: false })}
+          onDirtyChange={handleDirtyChange}
         />
       </Modal>
 
@@ -642,13 +751,14 @@ export function AdminPanel() {
         open={disciplineModal.open}
         onClose={() => setDisciplineModal({ open: false })}
         title="Редактировать дисциплину"
-        confirmClose
+        confirmClose={isFormDirty}
       >
         <DisciplineForm
           key={disciplineModal.discipline?.id ?? 'new'}
           discipline={disciplineModal.discipline}
           onSubmit={handleDisciplineSubmit}
           onCancel={() => setDisciplineModal({ open: false })}
+          onDirtyChange={handleDirtyChange}
         />
       </Modal>
     </>

@@ -17,7 +17,7 @@ import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import { alpha, useTheme } from '@mui/material/styles';
 import { getDisciplineColor } from '@/shared/lib/discipline-colors';
 import { getDisciplineIconUrl } from '@/shared/lib/discipline-icons';
-import { formatLocalDate } from '@/shared/lib/date';
+import { formatLocalDate, normalizeTimeToHHmm } from '@/shared/lib/date';
 import { useInterval } from '@/shared/hooks/useInterval';
 import { TournamentButton } from '@/features/tournament-button/TournamentButton';
 import { Modal } from '@/shared/ui/modal/Modal';
@@ -474,7 +474,6 @@ export const CalendarGrid = memo(function CalendarGrid({
                     {e.discipline && (
                       <Chip
                         label={e.discipline}
-                        size="small"
                         variant="outlined"
                         avatar={
                           iconUrl ? (
@@ -492,8 +491,7 @@ export const CalendarGrid = memo(function CalendarGrid({
                     {e.start_time && (
                       <Chip
                         icon={<AccessTimeIcon />}
-                        label={`${e.start_time.split(':').slice(0, 2).join(':')} МСК`}
-                        size="small"
+                        label={`${normalizeTimeToHHmm(e.start_time)} МСК`}
                         variant="outlined"
                       />
                     )}
@@ -501,7 +499,6 @@ export const CalendarGrid = memo(function CalendarGrid({
                       <Chip
                         icon={<EmojiEventsIcon />}
                         label={e.prize}
-                        size="small"
                         variant="outlined"
                         sx={{ borderColor: alpha('#fbbf24', 0.3), color: '#fbbf24' }}
                       />

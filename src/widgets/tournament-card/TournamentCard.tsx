@@ -15,7 +15,7 @@ import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import { CountdownTimer } from '@/features/countdown-timer/CountdownTimer';
 import { TournamentButton } from '@/features/tournament-button/TournamentButton';
 import { getDisciplineIconUrl } from '@/shared/lib/discipline-icons';
-import { formatDateForDisplay } from '@/shared/lib/date';
+import { formatDateForDisplay, normalizeTimeToHHmm } from '@/shared/lib/date';
 import { staggerItem } from '@/shared/lib/animations';
 import type { Tournament } from '@/entities/tournament/types';
 
@@ -40,7 +40,6 @@ export const TournamentCard = memo(function TournamentCard({ tournament, regLink
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
           <Chip
             label={tournament.discipline}
-            size="small"
             color="primary"
             variant="outlined"
             avatar={
@@ -65,7 +64,7 @@ export const TournamentCard = memo(function TournamentCard({ tournament, regLink
             {formatDateForDisplay(tournament.date)}
             {tournament.start_time && (
               <Typography component="span" variant="body2" color="text.secondary" sx={{ ml: 0.5, fontSize: '0.8rem' }}>
-                {tournament.start_time.split(':').slice(0, 2).join(':')} МСК
+                {normalizeTimeToHHmm(tournament.start_time)} МСК
               </Typography>
             )}
           </InfoRow>
@@ -90,7 +89,6 @@ export const TournamentCard = memo(function TournamentCard({ tournament, regLink
         <Box sx={{ display: 'flex', gap: 1, mt: 2, mb: 1 }}>
           <Button
             variant="outlined"
-            size="small"
             startIcon={<AccountTreeIcon />}
             onClick={handleBracketClick}
             sx={{ textTransform: 'none', flex: 1, fontSize: '0.78rem' }}

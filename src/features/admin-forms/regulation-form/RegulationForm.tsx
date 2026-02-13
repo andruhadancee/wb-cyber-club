@@ -22,9 +22,10 @@ interface Props {
   regulation?: Regulation | null;
   onSubmit: (data: FormValues & { id?: number }) => Promise<void>;
   onCancel: () => void;
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
-export function RegulationForm({ regulation, onSubmit, onCancel }: Props) {
+export function RegulationForm({ regulation, onSubmit, onCancel, onDirtyChange }: Props) {
   const { disciplines, fetchAll } = useDisciplineStore();
 
   useEffect(() => {
@@ -34,7 +35,7 @@ export function RegulationForm({ regulation, onSubmit, onCancel }: Props) {
   const {
     control,
     handleSubmit,
-    formState: { errors, isSubmitting },
+    formState: { errors, isSubmitting, isDirty },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: regulation
@@ -45,6 +46,8 @@ export function RegulationForm({ regulation, onSubmit, onCancel }: Props) {
         }
       : undefined,
   });
+
+  useEffect(() => { onDirtyChange?.(isDirty); }, [isDirty, onDirtyChange]);
 
   const handleFormSubmit = async (data: FormValues) => {
     await onSubmit({ ...data, id: regulation?.id });

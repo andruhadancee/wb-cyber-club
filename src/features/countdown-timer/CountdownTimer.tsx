@@ -4,7 +4,7 @@ import { alpha, useTheme } from '@mui/material/styles';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import { useInterval } from '@/shared/hooks/useInterval';
-import { parseTournamentDateTime } from '@/shared/lib/date';
+import { parseTournamentDateTime, normalizeTimeToHHmm } from '@/shared/lib/date';
 import { pulseGlow } from '@/shared/lib/animations';
 
 interface Props {
@@ -17,7 +17,7 @@ export const CountdownTimer = memo(function CountdownTimer({ dateStr, startTime 
 
   const calcRemaining = useCallback(() => {
     if (!startTime) return null;
-    const target = parseTournamentDateTime(dateStr, startTime);
+    const target = parseTournamentDateTime(dateStr, normalizeTimeToHHmm(startTime));
     if (!target) return null;
     const diff = target.getTime() - Date.now();
     if (diff <= 0) return { ended: true, days: 0, hours: 0, minutes: 0 };
@@ -41,7 +41,6 @@ export const CountdownTimer = memo(function CountdownTimer({ dateStr, startTime 
         icon={<PlayArrowIcon />}
         label="LIVE"
         color="success"
-        size="small"
         sx={{
           fontWeight: 700,
           letterSpacing: '0.05em',
@@ -61,7 +60,6 @@ export const CountdownTimer = memo(function CountdownTimer({ dateStr, startTime 
       icon={<AccessTimeIcon />}
       label={parts.join(' ')}
       variant="outlined"
-      size="small"
       sx={{
         fontWeight: 600,
         borderColor: alpha(theme.palette.primary.main, 0.3),

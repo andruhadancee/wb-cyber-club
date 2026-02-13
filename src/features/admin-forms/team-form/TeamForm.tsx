@@ -22,9 +22,10 @@ interface Props {
   team?: Team | null;
   onSubmit: (data: FormValues & { id?: number }) => Promise<void>;
   onCancel: () => void;
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
-export function TeamForm({ team, onSubmit, onCancel }: Props) {
+export function TeamForm({ team, onSubmit, onCancel, onDirtyChange }: Props) {
   const { activeTournaments, fetchActive } = useTournamentStore();
 
   useEffect(() => {
@@ -34,13 +35,15 @@ export function TeamForm({ team, onSubmit, onCancel }: Props) {
   const {
     control,
     handleSubmit,
-    formState: { errors, isSubmitting },
+    formState: { errors, isSubmitting, isDirty },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: team
       ? { tournamentId: team.tournament_id, name: team.name, players: team.players }
       : { players: 5 },
   });
+
+  useEffect(() => { onDirtyChange?.(isDirty); }, [isDirty, onDirtyChange]);
 
   const handleFormSubmit = async (data: FormValues) => {
     await onSubmit({ ...data, id: team?.id });

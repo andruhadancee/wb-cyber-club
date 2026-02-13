@@ -128,21 +128,34 @@ const MatchCard = memo(function MatchCard({
   const isDark = theme.palette.mode === 'dark';
   const isLive = match.status === 'live';
   const isCompleted = match.status === 'completed';
+  const hasWinner = !!match.winner_id;
   const hasTeams = !!match.team1_name || !!match.team2_name;
+  const isBye = hasTeams && (!match.team1_name || !match.team2_name);
 
-  const cardBg = isDark
-    ? `linear-gradient(145deg, ${alpha('#1a1d2e', 0.92)} 0%, ${alpha('#12141f', 0.96)} 100%)`
-    : `linear-gradient(145deg, ${alpha('#ffffff', 0.95)} 0%, ${alpha('#f5f6fa', 0.98)} 100%)`;
+  // ── backgrounds per state ──
+  const cardBg = isCompleted && hasWinner
+    ? isDark
+      ? `linear-gradient(145deg, ${alpha('#141e2a', 0.95)} 0%, ${alpha('#0f1620', 0.97)} 100%)`
+      : `linear-gradient(145deg, ${alpha('#f6faf7', 0.97)} 0%, ${alpha('#eef5f0', 0.98)} 100%)`
+    : isLive
+      ? isDark
+        ? `linear-gradient(145deg, ${alpha('#2a1520', 0.94)} 0%, ${alpha('#1a0e15', 0.97)} 100%)`
+        : `linear-gradient(145deg, ${alpha('#fff8f8', 0.97)} 0%, ${alpha('#fef2f2', 0.98)} 100%)`
+      : isDark
+        ? `linear-gradient(145deg, ${alpha('#1a1d2e', 0.92)} 0%, ${alpha('#12141f', 0.96)} 100%)`
+        : `linear-gradient(145deg, ${alpha('#ffffff', 0.95)} 0%, ${alpha('#f5f6fa', 0.98)} 100%)`;
 
   const borderColor = isLive
     ? theme.palette.error.main
-    : isCompleted ? alpha(accent, 0.5) : alpha(theme.palette.divider, isDark ? 0.15 : 0.2);
+    : isCompleted && hasWinner
+      ? alpha(theme.palette.success.main, isDark ? 0.4 : 0.45)
+      : alpha(theme.palette.divider, isDark ? 0.12 : 0.15);
 
   const shadowLayers = isLive
     ? `0 0 20px ${alpha(theme.palette.error.main, 0.3)}, 0 4px 16px ${alpha('#000', 0.3)}`
-    : isCompleted
-      ? `0 0 16px ${alpha(accent, 0.15)}, 0 4px 16px ${alpha('#000', 0.2)}`
-      : `0 4px 20px ${alpha('#000', isDark ? 0.3 : 0.08)}`;
+    : isCompleted && hasWinner
+      ? `0 0 12px ${alpha(theme.palette.success.main, isDark ? 0.15 : 0.1)}, 0 4px 16px ${alpha('#000', isDark ? 0.25 : 0.08)}`
+      : `0 4px 20px ${alpha('#000', isDark ? 0.25 : 0.06)}`;
 
   return (
     <Paper
@@ -155,23 +168,22 @@ const MatchCard = memo(function MatchCard({
         cursor: onClick ? 'pointer' : 'default',
         transition: 'all 0.25s cubic-bezier(.4,0,.2,1)',
         background: cardBg, backdropFilter: 'blur(16px)', boxShadow: shadowLayers,
-        opacity: !hasTeams ? 0.5 : 1,
-        /* Crisp rendering */
+        opacity: isBye ? 0.4 : !hasTeams ? 0.35 : 1,
         WebkitFontSmoothing: 'antialiased',
         MozOsxFontSmoothing: 'grayscale',
         textRendering: 'optimizeLegibility',
         ...(onClick && {
           '&:hover': {
             borderColor: accent,
-            boxShadow: `0 0 24px ${alpha(accent, 0.25)}, 0 8px 32px ${alpha('#000', 0.25)}`,
-            transform: 'translateY(-2px) scale(1.02)',
+            boxShadow: `0 0 20px ${alpha(accent, 0.2)}, 0 6px 24px ${alpha('#000', 0.2)}`,
+            transform: 'translateY(-1px)',
           },
         }),
         ...(isLive && {
           animation: 'bracketPulse 2.5s ease-in-out infinite',
           '@keyframes bracketPulse': {
             '0%,100%': { boxShadow: `0 0 16px ${alpha(theme.palette.error.main, 0.2)}, 0 4px 16px ${alpha('#000', 0.3)}` },
-            '50%': { boxShadow: `0 0 32px ${alpha(theme.palette.error.main, 0.45)}, 0 4px 16px ${alpha('#000', 0.3)}` },
+            '50%': { boxShadow: `0 0 28px ${alpha(theme.palette.error.main, 0.4)}, 0 4px 16px ${alpha('#000', 0.3)}` },
           },
         }),
       }}
@@ -181,9 +193,9 @@ const MatchCard = memo(function MatchCard({
         position: 'absolute', top: 0, left: 0, right: 0, height: isLive ? '2.5px' : '2px',
         background: isLive
           ? `linear-gradient(90deg, transparent 0%, ${theme.palette.error.main} 20%, ${alpha('#ff6b6b', 0.9)} 50%, ${theme.palette.error.main} 80%, transparent 100%)`
-          : isCompleted
-            ? `linear-gradient(90deg, transparent, ${theme.palette.success.main}, ${accent}, transparent)`
-            : `linear-gradient(90deg, transparent, ${alpha(theme.palette.divider, isDark ? 0.15 : 0.2)}, transparent)`,
+          : isCompleted && hasWinner
+            ? `linear-gradient(90deg, transparent, ${theme.palette.success.main}, ${alpha(theme.palette.success.light, 0.7)}, transparent)`
+            : `linear-gradient(90deg, transparent, ${alpha(theme.palette.divider, isDark ? 0.1 : 0.15)}, transparent)`,
         ...(isLive && {
           backgroundSize: '200% 100%',
           animation: 'shimmerLine 2s linear infinite',
@@ -193,117 +205,85 @@ const MatchCard = memo(function MatchCard({
           },
         }),
       }} />
-      <StatusBadge status={match.status} hasWinner={!!match.winner_id} />
+      <StatusBadge status={match.status} hasWinner={hasWinner} />
       <TeamSlot name={match.team1_name} score={match.score1}
-        isWinner={!!match.winner_id && match.winner_id === match.team1_id}
-        isLoser={!!match.winner_id && match.team1_id !== null && match.winner_id !== match.team1_id}
-        accent={accent} />
+        isWinner={hasWinner && match.winner_id === match.team1_id}
+        isLoser={hasWinner && match.team1_id !== null && match.winner_id !== match.team1_id}
+        accent={accent} isCompleted={isCompleted} />
       <Box sx={{
-        height: '1px', mx: 2,
-        background: `linear-gradient(90deg, transparent, ${alpha(theme.palette.divider, isDark ? 0.12 : 0.2)}, transparent)`,
+        height: '1px', mx: 1.5,
+        background: isCompleted && hasWinner
+          ? `linear-gradient(90deg, transparent, ${alpha(theme.palette.success.main, isDark ? 0.18 : 0.2)}, transparent)`
+          : `linear-gradient(90deg, transparent, ${alpha(theme.palette.divider, isDark ? 0.1 : 0.15)}, transparent)`,
       }} />
       <TeamSlot name={match.team2_name} score={match.score2}
-        isWinner={!!match.winner_id && match.winner_id === match.team2_id}
-        isLoser={!!match.winner_id && match.team2_id !== null && match.winner_id !== match.team2_id}
-        accent={accent} />
+        isWinner={hasWinner && match.winner_id === match.team2_id}
+        isLoser={hasWinner && match.team2_id !== null && match.winner_id !== match.team2_id}
+        accent={accent} isCompleted={isCompleted} />
     </Paper>
   );
 });
 
 /* ═══════════════════ StatusBadge ═══════════════════ */
 
-function StatusBadge({ status, hasWinner }: { status: string; hasWinner: boolean }) {
+function StatusBadge({ status }: { status: string; hasWinner: boolean }) {
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
   const isLive = status === 'live';
   const isCompleted = status === 'completed';
-  const isPending = status === 'pending';
 
-  const badgeColor = isLive
-    ? theme.palette.error.main
-    : isCompleted
-      ? theme.palette.success.main
-      : isDark ? alpha('#94a3b8', 0.55) : alpha('#64748b', 0.55);
+  // Completed — no badge, conveyed by green accent & winner highlight
+  if (isCompleted) return null;
 
-  const label = isLive ? 'LIVE' : isCompleted ? (hasWinner ? 'ПОБ' : 'КОН') : 'ОЖИД';
-
-  return (
-    <Box sx={{
-      position: 'absolute', top: 6, right: 8, display: 'flex', alignItems: 'center', gap: 0.5,
-      px: 0.8, py: 0.2, borderRadius: '6px', zIndex: 2,
-      bgcolor: alpha(badgeColor, isLive ? 1 : isCompleted ? 0.85 : 0.3),
-      backdropFilter: isPending ? 'blur(4px)' : 'none',
-      boxShadow: isLive
-        ? `0 0 8px ${alpha(theme.palette.error.main, 0.5)}, 0 0 16px ${alpha(theme.palette.error.main, 0.2)}`
-        : isCompleted
-          ? `0 0 6px ${alpha(theme.palette.success.main, 0.3)}`
-          : 'none',
-      ...(isLive && {
+  if (isLive) {
+    return (
+      <Box sx={{
+        position: 'absolute', top: 6, right: 8, display: 'flex', alignItems: 'center', gap: 0.4,
+        px: 0.7, py: 0.15, borderRadius: '5px', zIndex: 2,
+        bgcolor: alpha(theme.palette.error.main, 0.95),
+        boxShadow: `0 0 8px ${alpha(theme.palette.error.main, 0.4)}`,
         animation: 'badgePulse 2s ease-in-out infinite',
         '@keyframes badgePulse': {
-          '0%,100%': { boxShadow: `0 0 8px ${alpha(theme.palette.error.main, 0.5)}, 0 0 16px ${alpha(theme.palette.error.main, 0.15)}` },
-          '50%': { boxShadow: `0 0 14px ${alpha(theme.palette.error.main, 0.7)}, 0 0 28px ${alpha(theme.palette.error.main, 0.3)}` },
+          '0%,100%': { boxShadow: `0 0 6px ${alpha(theme.palette.error.main, 0.4)}` },
+          '50%': { boxShadow: `0 0 14px ${alpha(theme.palette.error.main, 0.6)}` },
         },
-      }),
-      ...(isPending && {
-        animation: 'pendingFade 3s ease-in-out infinite',
-        '@keyframes pendingFade': {
-          '0%,100%': { opacity: 0.6 },
-          '50%': { opacity: 1 },
-        },
-      }),
-    }}>
-      {/* Live — recording dot */}
-      {isLive && (
+      }}>
         <Box sx={{ position: 'relative', width: 6, height: 6, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <Box sx={{
             position: 'absolute', width: 6, height: 6, borderRadius: '50%', bgcolor: '#fff',
             animation: 'liveRing 1.5s ease-out infinite',
             '@keyframes liveRing': {
-              '0%': { transform: 'scale(1)', opacity: 0.8 },
+              '0%': { transform: 'scale(1)', opacity: 0.7 },
               '100%': { transform: 'scale(2.5)', opacity: 0 },
             },
           }} />
           <Box sx={{
-            width: 5, height: 5, borderRadius: '50%', bgcolor: '#fff', position: 'relative', zIndex: 1,
-            animation: 'liveDot 1s ease-in-out infinite',
-            '@keyframes liveDot': { '0%,100%': { opacity: 1, transform: 'scale(1)' }, '50%': { opacity: 0.6, transform: 'scale(0.8)' } },
+            width: 4, height: 4, borderRadius: '50%', bgcolor: '#fff', position: 'relative', zIndex: 1,
           }} />
         </Box>
-      )}
-
-      {/* Completed — check icon */}
-      {isCompleted && (
-        <Box sx={{
-          width: 8, height: 8, display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: '0.5rem', lineHeight: 1, color: '#fff', fontWeight: 900,
+        <Typography sx={{
+          fontSize: '0.45rem', fontWeight: 800, letterSpacing: 0.6, lineHeight: 1.2, color: '#fff',
         }}>
-          ✓
-        </Box>
-      )}
+          LIVE
+        </Typography>
+      </Box>
+    );
+  }
 
-      {/* Pending — clock dots */}
-      {isPending && (
-        <Box sx={{ display: 'flex', gap: '2px', alignItems: 'center' }}>
-          {[0, 1, 2].map((i) => (
-            <Box key={i} sx={{
-              width: 3, height: 3, borderRadius: '50%',
-              bgcolor: isDark ? '#cbd5e1' : '#475569',
-              animation: `pendingDots 1.4s ease-in-out ${i * 0.2}s infinite`,
-              '@keyframes pendingDots': {
-                '0%,80%,100%': { opacity: 0.3, transform: 'scale(0.8)' },
-                '40%': { opacity: 1, transform: 'scale(1.2)' },
-              },
-            }} />
-          ))}
-        </Box>
-      )}
-
+  // Pending
+  return (
+    <Box sx={{
+      position: 'absolute', top: 6, right: 8, display: 'flex', alignItems: 'center', gap: 0.3,
+      px: 0.6, py: 0.15, borderRadius: '5px', zIndex: 2,
+      bgcolor: alpha(isDark ? '#475569' : '#94a3b8', 0.25),
+      border: `1px solid ${alpha(isDark ? '#64748b' : '#94a3b8', 0.2)}`,
+    }}>
       <Typography sx={{
-        fontSize: '0.5rem', fontWeight: 800, letterSpacing: 0.6, lineHeight: 1.3,
-        color: isLive || isCompleted ? '#fff' : (isDark ? '#e2e8f0' : '#1e293b'),
+        fontSize: '0.4rem', fontWeight: 700, letterSpacing: 0.5, lineHeight: 1.2,
+        color: alpha(isDark ? '#94a3b8' : '#64748b', 0.7),
+        textTransform: 'uppercase',
       }}>
-        {label}
+        Ожидание
       </Typography>
     </Box>
   );
@@ -312,35 +292,56 @@ function StatusBadge({ status, hasWinner }: { status: string; hasWinner: boolean
 /* ═══════════════════ TeamSlot ═══════════════════ */
 
 function TeamSlot({
-  name, score, isWinner, isLoser, accent,
+  name, score, isWinner, isLoser, accent, isCompleted,
 }: {
-  name: string | null; score: number | null; isWinner: boolean; isLoser: boolean; accent: string;
+  name: string | null; score: number | null; isWinner: boolean; isLoser: boolean; accent: string; isCompleted: boolean;
 }) {
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
   const hasBye = !name;
+  const green = theme.palette.success.main;
 
   return (
     <Box sx={{
       display: 'flex', alignItems: 'center', height: (MATCH_H - 1) / 2, px: 1.2, gap: 0.8,
-      transition: 'opacity 0.2s', opacity: isLoser ? 0.4 : 1,
-      ...(isWinner && { background: `linear-gradient(90deg, ${alpha(accent, isDark ? 0.12 : 0.08)} 0%, transparent 80%)` }),
+      position: 'relative', transition: 'opacity 0.2s',
+      opacity: isLoser ? 0.45 : 1,
+      ...(isWinner && {
+        background: `linear-gradient(90deg, ${alpha(green, isDark ? 0.1 : 0.07)} 0%, transparent 70%)`,
+      }),
     }}>
+      {/* Left accent bar for winner */}
+      {isWinner && (
+        <Box sx={{
+          position: 'absolute', left: 0, top: '15%', bottom: '15%', width: '3px',
+          borderRadius: '0 3px 3px 0',
+          background: `linear-gradient(180deg, ${green}, ${alpha(green, 0.6)})`,
+          boxShadow: `0 0 6px ${alpha(green, 0.4)}`,
+        }} />
+      )}
       <Box sx={{
         width: 24, height: 24, borderRadius: '6px', flexShrink: 0,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         fontSize: '0.55rem', fontWeight: 800, letterSpacing: 0.5, transition: 'all 0.25s',
         color: isWinner ? '#fff' : hasBye ? alpha(theme.palette.text.disabled, 0.5) : isDark ? alpha('#fff', 0.6) : alpha('#000', 0.5),
-        bgcolor: isWinner ? accent : alpha(theme.palette.divider, isDark ? 0.12 : 0.1),
-        border: isWinner ? `1.5px solid ${alpha(accent, 0.8)}` : `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-        ...(isWinner && { boxShadow: `0 0 8px ${alpha(accent, 0.35)}` }),
+        bgcolor: isWinner ? green : alpha(theme.palette.divider, isDark ? 0.12 : 0.1),
+        border: isWinner ? `1.5px solid ${alpha(green, 0.7)}` : `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+        ...(isWinner && { boxShadow: `0 0 8px ${alpha(green, 0.3)}` }),
       }}>
         {getInitials(name)}
       </Box>
       <Typography noWrap title={name ?? undefined} sx={{
-        flex: 1, fontSize: '0.78rem', fontWeight: isWinner ? 700 : 500,
-        color: hasBye ? alpha(theme.palette.text.disabled, 0.6) : isWinner ? (isDark ? '#fff' : accent) : isLoser ? 'text.disabled' : 'text.primary',
-        fontStyle: hasBye ? 'italic' : 'normal', textDecoration: isLoser ? 'line-through' : 'none',
+        flex: 1, fontSize: '0.78rem',
+        fontWeight: isWinner ? 700 : 500,
+        color: hasBye
+          ? alpha(theme.palette.text.disabled, 0.6)
+          : isWinner
+            ? (isDark ? '#e8f5e9' : '#1b5e20')
+            : isLoser
+              ? 'text.disabled'
+              : 'text.primary',
+        fontStyle: hasBye ? 'italic' : 'normal',
+        textDecoration: isLoser ? 'line-through' : 'none',
       }}>
         {name || 'Ожидание'}
       </Typography>
@@ -348,9 +349,9 @@ function TeamSlot({
         <Box sx={{
           minWidth: 28, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center',
           borderRadius: '6px', fontVariantNumeric: 'tabular-nums', transition: 'all 0.25s',
-          bgcolor: isWinner ? accent : alpha(theme.palette.text.primary, isDark ? 0.08 : 0.06),
-          color: isWinner ? '#fff' : alpha(theme.palette.text.primary, 0.6),
-          ...(isWinner && { boxShadow: `0 0 8px ${alpha(accent, 0.3)}` }),
+          bgcolor: isWinner ? green : alpha(theme.palette.text.primary, isDark ? 0.08 : 0.06),
+          color: isWinner ? '#fff' : isLoser ? alpha(theme.palette.text.primary, 0.35) : alpha(theme.palette.text.primary, 0.6),
+          ...(isWinner && { boxShadow: `0 0 8px ${alpha(green, 0.35)}` }),
         }}>
           <Typography sx={{ fontSize: '0.78rem', fontWeight: 800, lineHeight: 1 }}>{score}</Typography>
         </Box>
@@ -464,19 +465,75 @@ function ZoomPanel({ zoom, onZoomIn, onZoomOut, onFit }: {
       boxShadow: `0 4px 20px ${alpha('#000', isDark ? 0.4 : 0.1)}`,
     }}>
       <Tooltip title="Уменьшить" arrow>
-        <IconButton size="small" onClick={onZoomOut} sx={{ p: 0.5 }}><ZoomOutIcon sx={{ fontSize: 17 }} /></IconButton>
+        <IconButton onClick={onZoomOut} sx={{ p: 0.5 }}><ZoomOutIcon sx={{ fontSize: 17 }} /></IconButton>
       </Tooltip>
       <Typography sx={{ minWidth: 40, textAlign: 'center', fontWeight: 700, fontSize: '0.65rem', color: 'text.secondary', fontVariantNumeric: 'tabular-nums' }}>
         {Math.round(zoom * 100)}%
       </Typography>
       <Tooltip title="Увеличить" arrow>
-        <IconButton size="small" onClick={onZoomIn} sx={{ p: 0.5 }}><ZoomInIcon sx={{ fontSize: 17 }} /></IconButton>
+        <IconButton onClick={onZoomIn} sx={{ p: 0.5 }}><ZoomInIcon sx={{ fontSize: 17 }} /></IconButton>
       </Tooltip>
       <Box sx={{ width: '1px', height: 18, bgcolor: alpha(theme.palette.divider, 0.12), mx: 0.25 }} />
       <Tooltip title="Вместить" arrow>
-        <IconButton size="small" onClick={onFit} sx={{ p: 0.5 }}><FitScreenIcon sx={{ fontSize: 17 }} /></IconButton>
+        <IconButton onClick={onFit} sx={{ p: 0.5 }}><FitScreenIcon sx={{ fontSize: 17 }} /></IconButton>
       </Tooltip>
     </Paper>
+  );
+}
+
+/* ═══════════════════ ChampionBanner ═══════════════════ */
+
+const TROPHY_SVG = (
+  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M7 4V2h10v2h3a1 1 0 011 1v3c0 2.21-1.79 4-4 4h-.29A7.01 7.01 0 0113 15.92V18h3a1 1 0 011 1v2H7v-2a1 1 0 011-1h3v-2.08A7.01 7.01 0 017.29 12H7c-2.21 0-4-1.79-4-4V5a1 1 0 011-1h3zm-2 2v2c0 1.1.9 2 2 2h.54A7.06 7.06 0 017 7.46V6H5zm14 0v1.46A7.06 7.06 0 0118.46 10H19c1.1 0 2-.9 2-2V6h-2z"
+      fill="currentColor" />
+  </svg>
+);
+
+function ChampionBanner({ name, accent, isDark }: { name: string; accent: string; isDark: boolean }) {
+  const green = '#4caf50';
+  return (
+    <Box sx={{
+      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5,
+      mb: 1, animation: 'championAppear 0.6s ease-out',
+      '@keyframes championAppear': {
+        '0%': { opacity: 0, transform: 'translateY(8px) scale(0.95)' },
+        '100%': { opacity: 1, transform: 'translateY(0) scale(1)' },
+      },
+    }}>
+      {/* Trophy icon */}
+      <Box sx={{
+        width: 44, height: 44, borderRadius: '50%',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: `linear-gradient(135deg, ${alpha('#ffd700', 0.9)} 0%, ${alpha('#ffb300', 0.95)} 100%)`,
+        color: '#5d4037',
+        boxShadow: `0 0 20px ${alpha('#ffd700', 0.4)}, 0 0 40px ${alpha('#ffd700', 0.15)}`,
+        animation: 'trophyGlow 3s ease-in-out infinite',
+        '@keyframes trophyGlow': {
+          '0%,100%': { boxShadow: `0 0 16px ${alpha('#ffd700', 0.35)}, 0 0 32px ${alpha('#ffd700', 0.1)}` },
+          '50%': { boxShadow: `0 0 24px ${alpha('#ffd700', 0.5)}, 0 0 48px ${alpha('#ffd700', 0.2)}` },
+        },
+      }}>
+        {TROPHY_SVG}
+      </Box>
+      {/* Champion name */}
+      <Box sx={{
+        px: 1.5, py: 0.4, borderRadius: '8px',
+        background: isDark
+          ? `linear-gradient(135deg, ${alpha('#1a2e1a', 0.9)} 0%, ${alpha('#0f1e0f', 0.95)} 100%)`
+          : `linear-gradient(135deg, ${alpha('#e8f5e9', 0.95)} 0%, ${alpha('#c8e6c9', 0.9)} 100%)`,
+        border: `1px solid ${alpha(green, isDark ? 0.3 : 0.35)}`,
+        boxShadow: `0 0 12px ${alpha(green, 0.15)}`,
+      }}>
+        <Typography sx={{
+          fontSize: '0.7rem', fontWeight: 800, letterSpacing: 1,
+          textTransform: 'uppercase', textAlign: 'center',
+          color: isDark ? '#a5d6a7' : '#2e7d32',
+        }}>
+          {name}
+        </Typography>
+      </Box>
+    </Box>
   );
 }
 
@@ -544,14 +601,22 @@ function RoundsSection({
             </Box>
 
             {/* Matches */}
-            {round.matches.map((match, mi) => (
-              <div key={match.id} style={{
-                position: 'absolute', top: HEADER_H + 4 + offset + mi * CELL_H, left: 0,
-              }}>
-                <MatchCard match={match} accent={accent}
-                  onClick={onMatchClick ? () => handleCardClick(match) : undefined} />
-              </div>
-            ))}
+            {round.matches.map((match, mi) => {
+              const showChampion = isFinal && round.matches.length === 1 && !!match.winner_name;
+              return (
+                <div key={match.id} style={{
+                  position: 'absolute',
+                  top: HEADER_H + 4 + offset + mi * CELL_H - (showChampion ? 80 : 0),
+                  left: 0, width: MATCH_W,
+                }}>
+                  {showChampion && (
+                    <ChampionBanner name={match.winner_name!} accent={accent} isDark={isDark} />
+                  )}
+                  <MatchCard match={match} accent={accent}
+                    onClick={onMatchClick ? () => handleCardClick(match) : undefined} />
+                </div>
+              );
+            })}
           </div>
         );
       })}
@@ -815,29 +880,40 @@ export const BracketView = memo(function BracketView({
         )}
 
         {/* Гранд-финал */}
-        {layout.grandFinal && (
-          <div style={{ position: 'absolute', left: gfX, top: gfY - MATCH_H / 2 - HEADER_H - 4 }}>
-            <Box sx={{
-              height: HEADER_H, width: MATCH_W, display: 'flex', alignItems: 'center', justifyContent: 'center',
-              borderRadius: '10px', position: 'relative', overflow: 'hidden', mb: 0.5,
-              background: `linear-gradient(135deg, ${alpha(accent, 0.25)} 0%, ${alpha(accent, 0.1)} 100%)`,
-              border: `1px solid ${alpha(accent, 0.3)}`,
+        {layout.grandFinal && (() => {
+          const gf = layout.grandFinal!;
+          const hasChampion = !!gf.winner_name;
+          return (
+            <div style={{
+              position: 'absolute', left: gfX,
+              top: gfY - MATCH_H / 2 - HEADER_H - 4 - (hasChampion ? 80 : 0),
+              width: MATCH_W,
             }}>
+              {hasChampion && (
+                <ChampionBanner name={gf.winner_name!} accent={accent} isDark={isDark} />
+              )}
               <Box sx={{
-                position: 'absolute', bottom: 0, left: '15%', right: '15%', height: '2px',
-                background: `linear-gradient(90deg, transparent, ${accent}, transparent)`,
-              }} />
-              <Typography sx={{
-                color: accent, textTransform: 'uppercase', letterSpacing: 3,
-                fontSize: '0.65rem', fontWeight: 900,
+                height: HEADER_H, width: MATCH_W, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                borderRadius: '10px', position: 'relative', overflow: 'hidden', mb: 0.5,
+                background: `linear-gradient(135deg, ${alpha(accent, 0.25)} 0%, ${alpha(accent, 0.1)} 100%)`,
+                border: `1px solid ${alpha(accent, 0.3)}`,
               }}>
-                Гранд-финал
-              </Typography>
-            </Box>
-            <MatchCard match={layout.grandFinal} accent={accent}
-              onClick={onMatchClick ? () => handleCardClick(layout.grandFinal!) : undefined} />
-          </div>
-        )}
+                <Box sx={{
+                  position: 'absolute', bottom: 0, left: '15%', right: '15%', height: '2px',
+                  background: `linear-gradient(90deg, transparent, ${accent}, transparent)`,
+                }} />
+                <Typography sx={{
+                  color: accent, textTransform: 'uppercase', letterSpacing: 3,
+                  fontSize: '0.65rem', fontWeight: 900,
+                }}>
+                  Гранд-финал
+                </Typography>
+              </Box>
+              <MatchCard match={gf} accent={accent}
+                onClick={onMatchClick ? () => handleCardClick(gf) : undefined} />
+            </div>
+          );
+        })()}
       </div>
 
       <ZoomPanel zoom={zoom} onZoomIn={zoomIn} onZoomOut={zoomOut} onFit={fitToView} />

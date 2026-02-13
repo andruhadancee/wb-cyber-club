@@ -29,8 +29,12 @@ router.put('/', validate(updateDisciplineSchema), async (req, res, next) => {
 
 router.delete('/', async (req, res, next) => {
   try {
-    const name = req.query.name as string;
-    await disciplineService.removeByName(name);
+    const id = Number(req.query.id);
+    if (!id || isNaN(id)) {
+      res.status(400).json({ error: 'Параметр id обязателен' });
+      return;
+    }
+    await disciplineService.remove(id);
     res.json({ message: 'Дисциплина удалена' });
   } catch (err) { next(err); }
 });

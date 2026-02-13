@@ -3,7 +3,7 @@ import Button from '@mui/material/Button';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import HowToRegIcon from '@mui/icons-material/HowToReg';
 import { useInterval } from '@/shared/hooks/useInterval';
-import { parseTournamentDateTime } from '@/shared/lib/date';
+import { parseTournamentDateTime, normalizeTimeToHHmm } from '@/shared/lib/date';
 import { showWarning } from '@/shared/lib/toast';
 
 interface Props {
@@ -23,7 +23,7 @@ export const TournamentButton = memo(function TournamentButton({
 }: Props) {
   const getState = useCallback(() => {
     if (!startTime) return 'register' as const;
-    const dt = parseTournamentDateTime(date, startTime);
+    const dt = parseTournamentDateTime(date, normalizeTimeToHHmm(startTime));
     if (!dt) return 'register' as const;
     return Date.now() >= dt.getTime() ? 'watch' : 'register';
   }, [date, startTime]);

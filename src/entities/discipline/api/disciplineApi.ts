@@ -48,8 +48,8 @@ export const disciplineApi = {
     return result;
   },
 
-  async remove(name: string): Promise<void> {
-    await apiDelete(`/api/disciplines?name=${encodeURIComponent(name)}`);
+  async remove(id: number): Promise<void> {
+    await apiDelete(`/api/disciplines?id=${id}`);
     clearCache(CACHE_KEY);
   },
 };

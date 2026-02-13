@@ -40,11 +40,10 @@ export const TeamSection = memo(function TeamSection({
             <Box component="img" src={iconUrl} alt={discipline} sx={{ width: 24, height: 24, borderRadius: '50%' }} />
           )}
           <Typography fontWeight={600}>{tournamentTitle}</Typography>
-          <Chip label={discipline} size="small" variant="outlined" />
+          <Chip label={discipline} variant="outlined" />
           <Chip
             icon={<GroupsIcon />}
             label={`${teams.length} команд`}
-            size="small"
             color="primary"
             variant="outlined"
           />
@@ -57,7 +56,7 @@ export const TeamSection = memo(function TeamSection({
           </Typography>
         ) : (
           <TableContainer>
-            <Table size="small">
+            <Table>
               <TableHead>
                 <TableRow>
                   <TableCell>Название</TableCell>

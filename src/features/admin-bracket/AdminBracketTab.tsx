@@ -109,7 +109,7 @@ export function AdminBracketTab({ tournaments }: AdminBracketTabProps) {
     <Box>
       {/* Header */}
       <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-end', mb: 3, flexWrap: 'wrap' }}>
-        <FormControl size="small" sx={{ minWidth: 300 }}>
+        <FormControl sx={{ minWidth: 300 }}>
           <InputLabel>Выберите турнир</InputLabel>
           <Select
             value={selectedId}
