@@ -1,44 +1,68 @@
-import { create } from 'zustand';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { teamApi } from '../api';
-import type { Team, TeamFormData, TeamsByTournament } from '../types';
+import { queryKeys } from '@/shared/api/queryKeys';
+import type { TeamFormData, TeamsByTournament } from '../types';
 
-interface TeamState {
-  teamsByTournament: TeamsByTournament;
-  isLoading: boolean;
-  error: string | null;
-  fetchAll: () => Promise<void>;
-  createTeam: (data: TeamFormData) => Promise<void>;
-  updateTeam: (data: TeamFormData) => Promise<void>;
-  removeTeam: (id: number) => Promise<void>;
+// ─── Queries ───
+
+export function useTeams(status = 'active') {
+  return useQuery<TeamsByTournament>({
+    queryKey: queryKeys.teams.byStatus(status),
+    queryFn: () => teamApi.getAll({ status }),
+  });
 }
 
-export const useTeamStore = create<TeamState>((set, get) => ({
-  teamsByTournament: {},
-  isLoading: false,
-  error: null,
+// ─── Mutations ───
 
-  fetchAll: async () => {
-    set({ isLoading: true, error: null });
-    try {
-      const data = await teamApi.getAll();
-      set({ teamsByTournament: data, isLoading: false });
-    } catch (error) {
-      set({ error: String(error), isLoading: false });
-    }
-  },
+export function useCreateTeam() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: TeamFormData) => teamApi.create(data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.teams.all });
+      qc.invalidateQueries({ queryKey: queryKeys.tournaments.all });
+    },
+  });
+}
 
-  createTeam: async (data) => {
-    await teamApi.create(data);
-    await get().fetchAll();
-  },
+export function useUpdateTeam() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: TeamFormData) => teamApi.update(data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.teams.all });
+      qc.invalidateQueries({ queryKey: queryKeys.tournaments.all });
+    },
+  });
+}
 
-  updateTeam: async (data) => {
-    await teamApi.update(data);
-    await get().fetchAll();
-  },
+export function useRemoveTeam() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => teamApi.remove(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.teams.all });
+      qc.invalidateQueries({ queryKey: queryKeys.tournaments.all });
+    },
+  });
+}
 
-  removeTeam: async (id) => {
-    await teamApi.remove(id);
-    await get().fetchAll();
-  },
-}));
+// ─── Backward-compatible hook (replaces useTeamStore) ───
+
+export function useTeamStore() {
+  const teamsQuery = useTeams('active');
+  const createMut = useCreateTeam();
+  const updateMut = useUpdateTeam();
+  const removeMut = useRemoveTeam();
+
+  return {
+    teamsByTournament: teamsQuery.data ?? {},
+    isLoading: teamsQuery.isLoading,
+    error: teamsQuery.error?.message || null,
+
+    fetchAll: async (_status?: string) => { await teamsQuery.refetch(); },
+    createTeam: async (data: TeamFormData) => { await createMut.mutateAsync(data); },
+    updateTeam: async (data: TeamFormData) => { await updateMut.mutateAsync(data); },
+    removeTeam: async (id: number) => { await removeMut.mutateAsync(id); },
+  };
+}

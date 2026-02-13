@@ -15,8 +15,21 @@ async function updateTeamCount(tournamentId: number): Promise<void> {
   });
 }
 
-export async function getAll(tournamentId?: number): Promise<TeamsByTournament> {
-  const where = tournamentId ? { tournament_id: tournamentId } : {};
+export async function getAll(tournamentId?: number, tournamentStatus?: string): Promise<TeamsByTournament> {
+  let tournamentIds: number[] | undefined;
+
+  if (tournamentId) {
+    tournamentIds = [tournamentId];
+  } else if (tournamentStatus) {
+    const tournaments = await prisma.tournament.findMany({
+      where: { status: tournamentStatus },
+      select: { id: true },
+    });
+    tournamentIds = tournaments.map((t) => t.id);
+    if (tournamentIds.length === 0) return {};
+  }
+
+  const where = tournamentIds ? { tournament_id: { in: tournamentIds } } : {};
   const teams = await prisma.registeredTeam.findMany({
     where,
     orderBy: { created_at: 'desc' },

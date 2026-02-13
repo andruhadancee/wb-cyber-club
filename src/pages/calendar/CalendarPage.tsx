@@ -17,22 +17,15 @@ export function CalendarPage() {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    Promise.all([
-      calendarStore.fetchEvents(),
-      disciplineStore.fetchAll(),
-      linksApi.getAll().then(setLinks),
-    ]).finally(() => setReady(true));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    linksApi.getAll().then(setLinks).finally(() => setReady(true));
   }, []);
 
   const handlePrevMonth = useCallback(() => {
     calendarStore.prevMonth();
-    setTimeout(() => calendarStore.fetchEvents(), 0);
   }, [calendarStore]);
 
   const handleNextMonth = useCallback(() => {
     calendarStore.nextMonth();
-    setTimeout(() => calendarStore.fetchEvents(), 0);
   }, [calendarStore]);
 
   if (!ready) return <Loader />;

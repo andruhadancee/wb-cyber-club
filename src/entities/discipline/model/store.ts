@@ -1,48 +1,70 @@
-import { create } from 'zustand';
+import { useMemo } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { disciplineApi } from '../api';
+import { queryKeys } from '@/shared/api/queryKeys';
 import type { Discipline } from '../types';
 
-interface DisciplineState {
-  disciplines: Discipline[];
-  colorsMap: Record<string, string | null>;
-  isLoading: boolean;
-  fetchAll: () => Promise<void>;
-  createDiscipline: (name: string, color?: string | null) => Promise<void>;
-  updateDiscipline: (id: number, data: Partial<Pick<Discipline, 'name' | 'color'>>) => Promise<void>;
-  removeDiscipline: (id: number) => Promise<void>;
+// ─── Queries ───
+
+export function useDisciplines() {
+  return useQuery<Discipline[]>({
+    queryKey: queryKeys.disciplines.all,
+    queryFn: () => disciplineApi.getAll(),
+  });
 }
 
-export const useDisciplineStore = create<DisciplineState>((set, get) => ({
-  disciplines: [],
-  colorsMap: {},
-  isLoading: false,
+// ─── Mutations ───
 
-  fetchAll: async () => {
-    set({ isLoading: true });
-    try {
-      const data = await disciplineApi.getAll();
-      const colorsMap: Record<string, string | null> = {};
-      data.forEach((d) => {
-        colorsMap[d.name] = d.color;
-      });
-      set({ disciplines: data, colorsMap, isLoading: false });
-    } catch {
-      set({ isLoading: false });
-    }
-  },
+export function useCreateDiscipline() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ name, color }: { name: string; color?: string | null }) =>
+      disciplineApi.create(name, color),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: queryKeys.disciplines.all }); },
+  });
+}
 
-  createDiscipline: async (name, color) => {
-    await disciplineApi.create(name, color);
-    await get().fetchAll();
-  },
+export function useUpdateDiscipline() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: Partial<Pick<Discipline, 'name' | 'color'>> }) =>
+      disciplineApi.update(id, data),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: queryKeys.disciplines.all }); },
+  });
+}
 
-  updateDiscipline: async (id, data) => {
-    await disciplineApi.update(id, data);
-    await get().fetchAll();
-  },
+export function useRemoveDiscipline() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => disciplineApi.remove(id),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: queryKeys.disciplines.all }); },
+  });
+}
 
-  removeDiscipline: async (id) => {
-    await disciplineApi.remove(id);
-    await get().fetchAll();
-  },
-}));
+// ─── Backward-compatible hook (replaces useDisciplineStore) ───
+
+export function useDisciplineStore() {
+  const disciplinesQuery = useDisciplines();
+  const createMut = useCreateDiscipline();
+  const updateMut = useUpdateDiscipline();
+  const removeMut = useRemoveDiscipline();
+
+  const disciplines = disciplinesQuery.data ?? [];
+
+  const colorsMap = useMemo(() => {
+    const map: Record<string, string | null> = {};
+    disciplines.forEach((d) => { map[d.name] = d.color; });
+    return map;
+  }, [disciplines]);
+
+  return {
+    disciplines,
+    colorsMap,
+    isLoading: disciplinesQuery.isLoading,
+
+    fetchAll: async () => { await disciplinesQuery.refetch(); },
+    createDiscipline: async (name: string, color?: string | null) => { await createMut.mutateAsync({ name, color }); },
+    updateDiscipline: async (id: number, data: Partial<Pick<Discipline, 'name' | 'color'>>) => { await updateMut.mutateAsync({ id, data }); },
+    removeDiscipline: async (id: number) => { await removeMut.mutateAsync(id); },
+  };
+}

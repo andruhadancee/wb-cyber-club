@@ -10,7 +10,8 @@ router.get('/', async (req, res, next) => {
     const tournamentId = req.query.tournamentId
       ? Number(req.query.tournamentId)
       : undefined;
-    const teams = await teamService.getAll(tournamentId);
+    const status = (req.query.status as string) || undefined;
+    const teams = await teamService.getAll(tournamentId, status);
     res.json(teams);
   } catch (err) { next(err); }
 });

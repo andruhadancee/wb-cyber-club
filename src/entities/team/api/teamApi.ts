@@ -1,36 +1,25 @@
 import { apiGet, apiPost, apiPut, apiDelete } from '@/shared/api';
-import { clearCache } from '@/shared/lib/cache';
 import type { TeamsByTournament, TeamFormData } from '../types';
 
+/** Pure API functions — no caching, React Query handles that */
 export const teamApi = {
-  async getAll(tournamentId?: number | null): Promise<TeamsByTournament> {
-    try {
-      let path = '/api/teams';
-      if (tournamentId) path += `?tournamentId=${tournamentId}`;
-      return await apiGet<TeamsByTournament>(path);
-    } catch (error) {
-      console.error('Ошибка получения команд:', error);
-      return {};
-    }
+  async getAll(params?: { tournamentId?: number | null; status?: string }): Promise<TeamsByTournament> {
+    const query = new URLSearchParams();
+    if (params?.tournamentId) query.set('tournamentId', String(params.tournamentId));
+    if (params?.status) query.set('status', params.status);
+    const qs = query.toString();
+    return apiGet<TeamsByTournament>(`/api/teams${qs ? `?${qs}` : ''}`);
   },
 
   async create(data: TeamFormData): Promise<unknown> {
-    const result = await apiPost('/api/teams', data);
-    clearCache('teams');
-    clearCache('tournaments');
-    return result;
+    return apiPost('/api/teams', data);
   },
 
   async update(data: TeamFormData): Promise<unknown> {
-    const result = await apiPut('/api/teams', data);
-    clearCache('teams');
-    clearCache('tournaments');
-    return result;
+    return apiPut('/api/teams', data);
   },
 
   async remove(id: number): Promise<void> {
     await apiDelete(`/api/teams?id=${id}`);
-    clearCache('teams');
-    clearCache('tournaments');
   },
 };

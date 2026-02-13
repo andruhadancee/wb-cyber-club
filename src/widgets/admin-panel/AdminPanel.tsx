@@ -39,7 +39,6 @@ import { useRegulationStore } from '@/entities/regulation/model';
 import { useBracketStore } from '@/entities/bracket/model';
 import InputAdornment from '@mui/material/InputAdornment';
 import SearchIcon from '@mui/icons-material/Search';
-import { clearCache } from '@/shared/lib/cache';
 import { normalizeTimeToHHmm, formatDateForDisplay } from '@/shared/lib/date';
 import { getDisciplineColor } from '@/shared/lib/discipline-colors';
 import { Modal } from '@/shared/ui/modal/Modal';
@@ -116,18 +115,11 @@ export function AdminPanel() {
     const key = TAB_KEYS[value];
     setTab(key);
     localStorage.setItem('adminActiveTab', key);
-    if (key === 'teams') teamStore.fetchAll();
-    if (key === 'calendar') calendarStore.fetchEvents();
-  }, [teamStore, calendarStore]);
+  }, []);
 
+  // React Query auto-fetches data, only manual fetch needed for linksApi
   useEffect(() => {
-    tournamentStore.fetchActive();
-    tournamentStore.fetchPast();
-    disciplineStore.fetchAll();
-    regulationStore.fetchAll();
-    calendarStore.fetchEvents();
     linksApi.getAll().then(setRegLinks);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ─── Handlers ───
@@ -171,8 +163,6 @@ export function AdminPanel() {
       onConfirm: async () => {
         try {
           await teamStore.removeTeam(id);
-          clearCache('tournaments');
-          await tournamentStore.fetchActive(true);
           showSuccess('Команда удалена');
         } catch (e) {
           showError('Ошибка: ' + (e instanceof Error ? e.message : e));
@@ -235,11 +225,6 @@ export function AdminPanel() {
         showSuccess('Турнир добавлен');
       }
       setTournamentModal({ open: false });
-      if (data.status === 'finished') await tournamentStore.fetchPast(true);
-      else {
-        await tournamentStore.fetchActive(true);
-        calendarStore.fetchEvents();
-      }
     } catch (e) {
       showError('Ошибка: ' + (e instanceof Error ? e.message : e));
     }
@@ -255,8 +240,6 @@ export function AdminPanel() {
         showSuccess('Команда добавлена');
       }
       setTeamModal({ open: false });
-      clearCache('tournaments');
-      await tournamentStore.fetchActive(true);
     } catch (e) {
       showError('Ошибка: ' + (e instanceof Error ? e.message : e));
     }
@@ -480,7 +463,6 @@ export function AdminPanel() {
 
   const renderTeams = () => {
     const data = Object.entries(teamStore.teamsByTournament);
-    const allTournaments = [...tournamentStore.activeTournaments, ...tournamentStore.pastTournaments];
 
     return (
       <>
@@ -496,7 +478,7 @@ export function AdminPanel() {
           </Typography>
         ) : (
           data.map(([tid, teams]) => {
-            const t = allTournaments.find((x) => String(x.id) === tid);
+            const t = tournamentStore.activeTournaments.find((x) => String(x.id) === tid);
             return (
               <Paper key={tid} variant="outlined" sx={{ p: 2, mb: 2 }}>
                 <Typography fontWeight={600} sx={{ mb: 1 }}>

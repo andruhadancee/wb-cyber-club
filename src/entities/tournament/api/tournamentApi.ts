@@ -1,49 +1,23 @@
 import { apiGet, apiPost, apiPut, apiDelete } from '@/shared/api';
-import { getCachedData, setCachedData, clearCache } from '@/shared/lib/cache';
 import type { Tournament, TournamentFormData } from '../types';
 
+/** Pure API functions — no caching, React Query handles that */
 export const tournamentApi = {
-  async getAll(status?: string | null, forceReload = false): Promise<Tournament[]> {
-    try {
-      const cacheKey = `tournaments_${status || 'all'}`;
-      if (!forceReload) {
-        const cached = getCachedData<Tournament[]>(cacheKey);
-        if (cached) return cached;
-      }
-
-      let path = '/api/tournaments';
-      if (status) path += `?status=${status}`;
-
-      const data = await apiGet<Tournament[]>(path);
-      setCachedData(cacheKey, data);
-      return data;
-    } catch (error) {
-      console.error('Ошибка получения турниров:', error);
-      // Пробуем старый кеш
-      const cacheKey = `tournaments_${status || 'all'}`;
-      const oldCache = localStorage.getItem(`cache_${cacheKey}`);
-      if (oldCache) {
-        try { return JSON.parse(oldCache).data; } catch { /* ignore */ }
-      }
-      return [];
-    }
+  async getAll(status?: string | null): Promise<Tournament[]> {
+    let path = '/api/tournaments';
+    if (status) path += `?status=${status}`;
+    return apiGet<Tournament[]>(path);
   },
 
   async create(data: TournamentFormData): Promise<Tournament> {
-    const result = await apiPost<Tournament>('/api/tournaments', data);
-    clearCache('tournaments');
-    return result;
+    return apiPost<Tournament>('/api/tournaments', data);
   },
 
   async update(data: TournamentFormData): Promise<Tournament> {
-    const result = await apiPut<Tournament>('/api/tournaments', data);
-    clearCache('tournaments');
-    return result;
+    return apiPut<Tournament>('/api/tournaments', data);
   },
 
   async remove(id: number): Promise<void> {
     await apiDelete(`/api/tournaments?id=${id}`);
-    clearCache('tournaments');
-    clearCache('teams');
   },
 };
