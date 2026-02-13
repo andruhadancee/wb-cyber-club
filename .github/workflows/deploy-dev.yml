@@ -4,6 +4,10 @@ on:
   push:
     branches: [mvp-2]
 
+concurrency:
+  group: deploy-dev
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
