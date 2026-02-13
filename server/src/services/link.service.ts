@@ -19,17 +19,16 @@ export async function getAll(): Promise<RegistrationLinks> {
 }
 
 export async function save(links: RegistrationLinks): Promise<void> {
-  await prisma.registrationLink.deleteMany();
-
   const entries = Object.entries(links).filter(([, link]) => link?.trim());
-  if (entries.length > 0) {
-    await prisma.registrationLink.createMany({
-      data: entries.map(([discipline, link]) => ({
-        discipline,
-        link: link.trim(),
-      })),
-    });
-  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.registrationLink.deleteMany();
+    if (entries.length > 0) {
+      await tx.registrationLink.createMany({
+        data: entries.map(([discipline, link]) => ({ discipline, link: link.trim() })),
+      });
+    }
+  });
 
   invalidateCache();
 }

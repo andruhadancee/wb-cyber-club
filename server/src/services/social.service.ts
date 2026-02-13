@@ -17,8 +17,6 @@ export async function getAll(): Promise<SocialLinks> {
 }
 
 export async function save(data: SaveSocialLinksInput): Promise<void> {
-  await prisma.socialLink.deleteMany();
-
   const platforms = [
     { platform: 'twitch', link: data.twitch },
     { platform: 'telegram', link: data.telegram },
@@ -26,14 +24,14 @@ export async function save(data: SaveSocialLinksInput): Promise<void> {
     { platform: 'contact', link: data.contact },
   ].filter((p) => p.link?.trim()) as { platform: string; link: string }[];
 
-  if (platforms.length > 0) {
-    await prisma.socialLink.createMany({
-      data: platforms.map((p) => ({
-        platform: p.platform,
-        link: p.link.trim(),
-      })),
-    });
-  }
+  await prisma.$transaction(async (tx) => {
+    await tx.socialLink.deleteMany();
+    if (platforms.length > 0) {
+      await tx.socialLink.createMany({
+        data: platforms.map((p) => ({ platform: p.platform, link: p.link.trim() })),
+      });
+    }
+  });
 
   invalidateCache();
 }

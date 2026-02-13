@@ -3,6 +3,7 @@ import * as calendarService from '../services/calendar.service';
 import { validate } from '../middleware/validate';
 import { createCalendarEventSchema, updateCalendarEventSchema } from '../schemas/calendar.schema';
 import { cacheMiddleware } from '../cache';
+import { parseIdFromQuery } from '../middleware/parseId';
 
 const router = Router();
 
@@ -28,10 +29,9 @@ router.put('/', validate(updateCalendarEventSchema), async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-router.delete('/', async (req, res, next) => {
+router.delete('/', parseIdFromQuery, async (req, res, next) => {
   try {
-    const id = Number(req.query.id);
-    const event = await calendarService.remove(id);
+    const event = await calendarService.remove((req as any).parsedId);
     res.json({ message: 'Удалено', event });
   } catch (err) { next(err); }
 });

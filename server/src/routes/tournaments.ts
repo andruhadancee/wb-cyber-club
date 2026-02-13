@@ -3,6 +3,7 @@ import * as tournamentService from '../services/tournament.service';
 import { validate } from '../middleware/validate';
 import { createTournamentSchema, updateTournamentSchema } from '../schemas/tournament.schema';
 import { cacheMiddleware } from '../cache';
+import { parseIdFromQuery } from '../middleware/parseId';
 
 const router = Router();
 
@@ -28,10 +29,9 @@ router.put('/', validate(updateTournamentSchema), async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-router.delete('/', async (req, res, next) => {
+router.delete('/', parseIdFromQuery, async (req, res, next) => {
   try {
-    const id = Number(req.query.id);
-    const tournament = await tournamentService.remove(id);
+    const tournament = await tournamentService.remove((req as any).parsedId);
     res.json({ message: 'Турнир удалён', tournament });
   } catch (err) { next(err); }
 });

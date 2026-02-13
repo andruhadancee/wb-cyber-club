@@ -13,5 +13,8 @@ export function errorHandler(
   }
 
   console.error('[ERROR]', err);
-  res.status(500).json({ error: 'Ошибка сервера', details: err.message });
+  res.status(500).json({
+    error: 'Ошибка сервера',
+    ...(process.env.NODE_ENV !== 'production' && { details: err.message }),
+  });
 }

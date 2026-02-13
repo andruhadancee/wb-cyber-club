@@ -136,6 +136,7 @@ model BracketMatch {
   winner     RegisteredTeam? @relation("BracketWinner", fields: [winner_id], references: [id], onDelete: SetNull)
 
   @@index([tournament_id], name: "idx_bracket_tournament")
+  @@index([tournament_id, bracket_side, round, position], name: "idx_bracket_lookup")
   @@map("bracket_matches")
 }
 
