@@ -16,7 +16,7 @@ RUN npx prisma generate --schema=server/prisma/schema.prisma
 RUN npx vite build
 
 # Build backend (TypeScript -> JavaScript)
-RUN npx tsc -p server/tsconfig.json && echo '{"type":"commonjs"}' > server/dist/package.json
+RUN npx tsc -p server/tsconfig.json && echo '{"type":"module"}' > server/dist/package.json
 
 # Stage 2: Production
 FROM node:20-alpine
