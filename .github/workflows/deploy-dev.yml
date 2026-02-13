@@ -54,3 +54,43 @@ jobs:
             git reset --hard origin/mvp-2
             docker compose -f docker-compose.staging.yml up -d --build
             echo "Dev deploy completed at $(date)"
+
+      - name: Verify deployment & show logs
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: root
+          password: ${{ secrets.SERVER_PASSWORD }}
+          script: |
+            cd /opt/wb-cyber-club-dev
+
+            echo "══════════ Container status ══════════"
+            docker compose -f docker-compose.staging.yml ps
+
+            echo ""
+            echo "══════════ Waiting for app to start (30s) ══════════"
+            sleep 15
+
+            echo ""
+            echo "══════════ App logs (last 40 lines) ══════════"
+            docker compose -f docker-compose.staging.yml logs app-dev --tail 40 --no-color
+
+            echo ""
+            echo "══════════ Health check ══════════"
+            STATUS=$(docker compose -f docker-compose.staging.yml ps app-dev --format '{{.Status}}')
+            echo "App status: $STATUS"
+
+            if echo "$STATUS" | grep -qi "restarting\|exited"; then
+              echo "❌ DEPLOY FAILED — container is not healthy!"
+              exit 1
+            fi
+
+            HEALTH=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 http://localhost:3001/api/health 2>/dev/null || echo "000")
+            echo "Health endpoint: HTTP $HEALTH"
+
+            if [ "$HEALTH" = "200" ] || [ "$HEALTH" = "401" ]; then
+              echo "✅ Deploy OK"
+            else
+              echo "⚠️ Health check returned $HEALTH — check logs above"
+              exit 1
+            fi

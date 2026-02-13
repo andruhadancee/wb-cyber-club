@@ -21,6 +21,10 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false,
   // HSTS only in production (behind SSL). On dev it forces https:// which breaks access.
   hsts: isProd ? { maxAge: 31536000, includeSubDomains: true } : false,
+  // Disable headers that cause warnings on plain HTTP (non-HTTPS)
+  crossOriginOpenerPolicy: isProd ? { policy: 'same-origin' } : false,
+  crossOriginResourcePolicy: isProd ? { policy: 'same-origin' } : false,
+  originAgentCluster: isProd,
 }));
 
 // ── Performance ──

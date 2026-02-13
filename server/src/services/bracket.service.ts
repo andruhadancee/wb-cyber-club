@@ -101,6 +101,9 @@ export async function generate(tournamentId: number, format: BracketFormat = 'si
   if (uniqueTeams.length < 2) {
     throw AppError.badRequest('Для генерации сетки нужно минимум 2 уникальные команды');
   }
+  if (format === 'double' && uniqueTeams.length < 3) {
+    throw AppError.badRequest('Для двойного выбывания нужно минимум 3 команды');
+  }
 
   await prisma.bracketMatch.deleteMany({ where: { tournament_id: tournamentId } });
 
@@ -112,10 +115,12 @@ export async function generate(tournamentId: number, format: BracketFormat = 'si
 
   // ═════════ Upper Bracket ═════════
   // Round 1
+  // Fill team1 slots first (every match gets at least 1 team), then team2 with remaining.
+  // This prevents ghost matches and ensures BYEs don't cascade past R1.
   const r1Count = size / 2;
   for (let i = 0; i < r1Count; i++) {
-    const t1 = shuffled[i * 2] ?? null;
-    const t2 = shuffled[i * 2 + 1] ?? null;
+    const t1 = shuffled[i] ?? null;
+    const t2 = shuffled[i + r1Count] ?? null;
     const isBye = !t1 || !t2;
     const winner = isBye ? (t1 || t2) : null;
 
@@ -314,8 +319,10 @@ export async function updateMatch(
 
     const isDouble = allMatches.some((m) => m.bracket_side === 'lower');
     await advanceWinner(updated, allMatches, isDouble);
-    await autoCompleteByes(match.tournament_id);
   }
+
+  // Always sweep for BYE scenarios after any change (including rollback / reopen)
+  await autoCompleteByes(match.tournament_id);
 
   invalidateCache(match.tournament_id);
   return updated;
@@ -406,7 +413,9 @@ function findFeederMatch(
   if (side === 'grand_final') {
     if (isTeam1Slot) {
       // team1 ← UB Final winner
-      const ubMaxRound = Math.max(...allMatches.filter((m) => m.bracket_side === 'upper').map((m) => m.round));
+      const ubFiltered = allMatches.filter((m) => m.bracket_side === 'upper');
+      if (ubFiltered.length === 0) return null;
+      const ubMaxRound = Math.max(...ubFiltered.map((m) => m.round));
       return findMatch(allMatches, 'upper', ubMaxRound, 0) ?? null;
     } else {
       // team2 ← LB Final winner
@@ -503,7 +512,7 @@ async function advanceWinner(match: MatchRow, allMatches: MatchRow[], isDouble: 
   const loserName = match.team1_id === winnerId ? match.team2_name : match.team1_name;
 
   const ubMatches = allMatches.filter((m) => m.bracket_side === 'upper');
-  const ubRounds = Math.max(...ubMatches.map((m) => m.round));
+  const ubRounds = ubMatches.length > 0 ? Math.max(...ubMatches.map((m) => m.round)) : 0;
 
   if (side === 'upper') {
     const isUBFinal = match.round === ubRounds;
@@ -516,11 +525,13 @@ async function advanceWinner(match: MatchRow, allMatches: MatchRow[], isDouble: 
       // UB Final loser → LB Final (last LB round)
       if (loserId) {
         const lbMatches = allMatches.filter((m) => m.bracket_side === 'lower');
-        const lbMaxRound = Math.max(...lbMatches.map((m) => m.round));
-        const lbFinal = lbMatches.find((m) => m.round === lbMaxRound && m.position === 0);
-        if (lbFinal) {
-          // Drop-in slot (team2 — UB losers always enter as team2 in even rounds)
-          await setTeamInSlot(lbFinal.id, false, loserId, loserName);
+        if (lbMatches.length > 0) {
+          const lbMaxRound = Math.max(...lbMatches.map((m) => m.round));
+          const lbFinal = lbMatches.find((m) => m.round === lbMaxRound && m.position === 0);
+          if (lbFinal) {
+            // Drop-in slot (team2 — UB losers always enter as team2 in even rounds)
+            await setTeamInSlot(lbFinal.id, false, loserId, loserName);
+          }
         }
       }
     } else if (isUBFinal && !isDouble) {
@@ -540,6 +551,7 @@ async function advanceWinner(match: MatchRow, allMatches: MatchRow[], isDouble: 
     }
   } else if (side === 'lower') {
     const lbMatches = allMatches.filter((m) => m.bracket_side === 'lower');
+    if (lbMatches.length === 0) return;
     const lbMaxRound = Math.max(...lbMatches.map((m) => m.round));
     const isLBFinal = match.round === lbMaxRound;
 
@@ -620,17 +632,40 @@ async function setTeamInSlot(
 
 /**
  * Clear a team from the slot it was advanced into.
- * Used to find the match `teamId` was advanced into and null out that slot.
+ * CASCADING: if the team was the winner, recursively clears from all downstream matches.
  */
 async function clearTeamFromSlot(matchId: number, teamId: number): Promise<void> {
-  const m = await prisma.bracketMatch.findUnique({ where: { id: matchId } });
+  const m = await prisma.bracketMatch.findUnique({ where: { id: matchId } }) as MatchRow | null;
   if (!m) return;
+
+  const wasWinner = m.winner_id === teamId;
+
   const clearData: Record<string, unknown> = {};
   if (m.team1_id === teamId) { clearData.team1_id = null; clearData.team1_name = null; }
   if (m.team2_id === teamId) { clearData.team2_id = null; clearData.team2_name = null; }
-  if (m.winner_id === teamId) { clearData.winner_id = null; clearData.winner_name = null; clearData.status = 'pending'; }
+  if (wasWinner) { clearData.winner_id = null; clearData.winner_name = null; clearData.status = 'pending'; }
+
   if (Object.keys(clearData).length > 0) {
     await prisma.bracketMatch.update({ where: { id: matchId }, data: clearData });
+  }
+
+  // Cascade: if the cleared team was the winner, it was advanced further — clear downstream
+  if (wasWinner) {
+    const all = await prisma.bracketMatch.findMany({
+      where: { tournament_id: m.tournament_id },
+    }) as MatchRow[];
+    const isDouble = all.some((mm) => mm.bracket_side === 'lower');
+
+    // Clear winner from the next match it was advanced into
+    await rollbackAdvancement(m, teamId, all, isDouble);
+
+    // In double elim UB: the loser was also dropped to LB — clear that too
+    if (isDouble && m.bracket_side === 'upper') {
+      const loserId = m.team1_id === teamId ? m.team2_id : m.team1_id;
+      if (loserId) {
+        await rollbackLoserFromLB(m, loserId, all);
+      }
+    }
   }
 }
 
