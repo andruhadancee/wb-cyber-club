@@ -21,21 +21,25 @@ export function TeamsPage() {
     Promise.all([fetchActive(), fetchTeams(), fetchDisciplines()]).finally(() => setReady(true));
   }, [fetchActive, fetchTeams, fetchDisciplines]);
 
+  const activeIds = useMemo(() => new Set(activeTournaments.map((t) => String(t.id))), [activeTournaments]);
+
   const enriched = useMemo(() => {
-    return Object.entries(teamsByTournament).map(([tid, teams]) => {
-      const tournament = activeTournaments.find((t) => String(t.id) === tid);
-      return {
-        tournamentId: tid,
-        title: tournament?.title || teams[0]?.title || `Турнир #${tid}`,
-        discipline: tournament?.discipline || teams[0]?.discipline || '',
-        teams: teams.map((team) => ({
-          ...team,
-          discipline: team.discipline || tournament?.discipline,
-          title: team.title || tournament?.title,
-        })),
-      };
-    });
-  }, [teamsByTournament, activeTournaments]);
+    return Object.entries(teamsByTournament)
+      .filter(([tid]) => activeIds.has(tid))
+      .map(([tid, teams]) => {
+        const tournament = activeTournaments.find((t) => String(t.id) === tid)!;
+        return {
+          tournamentId: tid,
+          title: tournament.title,
+          discipline: tournament.discipline,
+          teams: teams.map((team) => ({
+            ...team,
+            discipline: team.discipline || tournament.discipline,
+            title: team.title || tournament.title,
+          })),
+        };
+      });
+  }, [teamsByTournament, activeTournaments, activeIds]);
 
   const available = [...new Set(enriched.map((e) => e.discipline).filter(Boolean))];
   const filtered =
