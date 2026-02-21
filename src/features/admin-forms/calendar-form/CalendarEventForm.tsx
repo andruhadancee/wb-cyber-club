@@ -14,6 +14,8 @@ import { useDisciplineStore } from '@/entities/discipline/model';
 import type { CalendarEvent } from '@/entities/calendar-event/types';
 import { normalizeTimeToHHmm } from '@/shared/lib/date';
 
+// test
+
 const schema = z.object({
   title: z.string().min(1, 'Обязательное поле'),
   eventDate: z.string().min(1, 'Укажите дату'),
