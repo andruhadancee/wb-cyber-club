@@ -1,5 +1,5 @@
 import type { Request } from 'express';
-import rateLimit, { type Options } from 'express-rate-limit';
+import rateLimit from 'express-rate-limit';
 import { RedisStore } from 'rate-limit-redis';
 import { getRedis } from '../redis';
 import logger from '../logger';
@@ -13,21 +13,18 @@ const onLimitReached = (req: Request): void => {
   logger.warn({ ip: keyGenerator(req), url: req.originalUrl }, 'Rate limit exceeded');
 };
 
-function getStore(): Partial<Options> {
+function createRedisStore(prefix: string): RedisStore | undefined {
   try {
-    const store = new RedisStore({
+    return new RedisStore({
       sendCommand: (...args: string[]) =>
         getRedis().call(...(args as [string, ...string[]])) as any,
-      prefix: 'rl:',
+      prefix,
     });
-    return { store };
   } catch {
-    logger.debug('Redis unavailable for rate limiter, using memory store');
-    return {};
+    logger.debug({ prefix }, 'Redis unavailable for rate limiter, using memory store');
+    return undefined;
   }
 }
-
-const storeOpts = getStore();
 
 export const apiLimiter = rateLimit({
   windowMs: 60_000,
@@ -35,7 +32,8 @@ export const apiLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator,
-  ...storeOpts,
+  store: createRedisStore('rl:api:'),
+  validate: { keyGeneratorIpFallback: false },
   handler: (req, res) => {
     onLimitReached(req);
     res.status(429).json({ error: 'Слишком много запросов, попробуйте позже' });
@@ -48,7 +46,8 @@ export const mutationLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator,
-  ...storeOpts,
+  store: createRedisStore('rl:mut:'),
+  validate: { keyGeneratorIpFallback: false },
   handler: (req, res) => {
     onLimitReached(req);
     res.status(429).json({ error: 'Слишком много запросов на изменение данных' });

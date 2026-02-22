@@ -459,7 +459,7 @@ export const CalendarGrid = memo(function CalendarGrid({
         title={modalDateFormatted}
         maxWidth="sm"
       >
-        <Stack spacing={2}>
+        <Stack spacing={1.5}>
           {modalEvents.length === 0 ? (
             <Box sx={{ textAlign: 'center', py: 4 }}>
               <TodayIcon sx={{ fontSize: 48, color: 'text.secondary', opacity: 0.3, mb: 1 }} />
@@ -467,7 +467,7 @@ export const CalendarGrid = memo(function CalendarGrid({
             </Box>
           ) : (
             <>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: -0.5 }}>
+              <Typography variant="body2" color="text.secondary">
                 {modalEvents.length} {modalEvents.length === 1 ? 'событие' : 'событий'}
               </Typography>
               {modalEvents.map((e) => {
@@ -483,7 +483,7 @@ export const CalendarGrid = memo(function CalendarGrid({
                     key={e.id}
                     variant="outlined"
                     sx={{
-                      p: 2.5,
+                      p: 2,
                       borderLeft: `4px solid ${evColor}`,
                       borderRadius: 2,
                       position: 'relative',
@@ -559,9 +559,9 @@ export const CalendarGrid = memo(function CalendarGrid({
                       <AppImage
                         src={e.image_url}
                         alt={e.title}
-                        height={200}
-                        borderRadius={1.5}
-                        sx={{ mb: 2 }}
+                        height={140}
+                        borderRadius={1}
+                        sx={{ mb: 1.5 }}
                       />
                     )}
 

@@ -14,7 +14,7 @@ export function getRedis(): Redis {
     });
 
     client.on('connect', () => logger.info('Redis connected'));
-    client.on('error', (err) => logger.warn({ err }, 'Redis error (falling back to in-memory)'));
+    client.on('error', (err) => logger.warn({ err: err.message }, 'Redis error'));
   }
   return client;
 }
@@ -22,10 +22,13 @@ export function getRedis(): Redis {
 export async function connectRedis(): Promise<boolean> {
   try {
     const redis = getRedis();
+    if (redis.status === 'ready' || redis.status === 'connecting') {
+      return redis.status === 'ready';
+    }
     await redis.connect();
     return true;
-  } catch {
-    logger.warn('Redis unavailable — using in-memory cache');
+  } catch (err) {
+    logger.warn({ err: err instanceof Error ? err.message : err }, 'Redis unavailable — using in-memory cache');
     return false;
   }
 }
