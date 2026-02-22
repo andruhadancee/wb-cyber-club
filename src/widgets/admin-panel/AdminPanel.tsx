@@ -32,6 +32,7 @@ import DescriptionIcon from '@mui/icons-material/Description';
 import ShareIcon from '@mui/icons-material/Share';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import ContentPasteGoIcon from '@mui/icons-material/ContentPasteGo';
+import DeleteSweepIcon from '@mui/icons-material/DeleteSweep';
 import { useTournamentStore } from '@/entities/tournament/model';
 import { useTeamStore, useBulkCreateTeams } from '@/entities/team/model';
 import { useDisciplineStore } from '@/entities/discipline/model';
@@ -163,6 +164,20 @@ export function AdminPanel() {
         try {
           await teamStore.removeTeam(id);
           showSuccess('Команда удалена');
+        } catch (e) {
+          showError('Ошибка: ' + (e instanceof Error ? e.message : e));
+        }
+      },
+    });
+  };
+
+  const handleDeleteAllTeams = (tournamentId: number, tournamentTitle: string) => {
+    showConfirm({
+      message: `Удалить все команды турнира «${tournamentTitle}»?`,
+      onConfirm: async () => {
+        try {
+          await teamStore.removeByTournament(tournamentId);
+          showSuccess('Все команды удалены');
         } catch (e) {
           showError('Ошибка: ' + (e instanceof Error ? e.message : e));
         }
@@ -511,9 +526,20 @@ export function AdminPanel() {
             const t = tournamentStore.activeTournaments.find((x) => String(x.id) === tid);
             return (
               <Paper key={tid} variant="outlined" sx={{ p: 2, mb: 2 }}>
-                <Typography fontWeight={600} sx={{ mb: 1 }}>
-                  {t?.title || `Турнир #${tid}`} — {t?.discipline || ''}
-                </Typography>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                  <Typography fontWeight={600}>
+                    {t?.title || `Турнир #${tid}`} — {t?.discipline || ''}
+                  </Typography>
+                  <Tooltip title="Удалить все команды">
+                    <IconButton
+                      size="small"
+                      color="error"
+                      onClick={() => handleDeleteAllTeams(Number(tid), t?.title || `Турнир #${tid}`)}
+                    >
+                      <DeleteSweepIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                </Box>
                 <TableContainer>
                   <Table>
                     <TableHead>

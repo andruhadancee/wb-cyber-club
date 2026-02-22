@@ -38,7 +38,7 @@ services:
 
   # ── App (Express + React static) ──
   app:
-    image: wb-cyber-club:latest
+    build: .
     expose:
       - "3000"
     environment:

@@ -3,6 +3,16 @@ dist
 .git
 .env
 .env.local
+.env.production
+.env.development
 *.md
 .cursor
+.github
+.vscode
+.idea
 certbot
+uploads
+nginx
+*.tar.gz
+*.bat
+*.mp4

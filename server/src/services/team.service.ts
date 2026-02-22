@@ -99,3 +99,11 @@ export async function remove(id: number): Promise<void> {
     await updateTeamCount(team.tournament_id);
   }
 }
+
+export async function removeByTournament(tournamentId: number): Promise<{ deleted: number }> {
+  const result = await prisma.registeredTeam.deleteMany({
+    where: { tournament_id: tournamentId },
+  });
+  await updateTeamCount(tournamentId);
+  return { deleted: result.count };
+}

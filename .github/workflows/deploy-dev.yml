@@ -9,41 +9,38 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-deploy:
+  typecheck:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build image
-        uses: docker/build-push-action@v5
+      - uses: actions/setup-node@v4
         with:
-          context: .
-          push: false
-          load: true
-          tags: wb-cyber-club-dev:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          node-version: 20
+          cache: npm
 
-      - name: Save and upload image
-        env:
-          SERVER_HOST: ${{ secrets.SERVER_HOST }}
-          SERVER_PASSWORD: ${{ secrets.SERVER_PASSWORD }}
+      - name: Install dependencies
+        run: npm ci --registry=https://registry.npmjs.org/
+
+      - name: Generate Prisma client
+        run: npx prisma generate --schema=server/prisma/schema.prisma
+
+      - name: Typecheck
         run: |
-          sudo apt-get install -y -qq sshpass > /dev/null 2>&1
-          docker save wb-cyber-club-dev:latest | gzip > image.tar.gz
-          echo "Image size: $(du -h image.tar.gz | cut -f1)"
-          sshpass -p "$SERVER_PASSWORD" scp -o StrictHostKeyChecking=no -o ConnectTimeout=30 image.tar.gz root@"$SERVER_HOST":/tmp/image.tar.gz
+          npx tsc --noEmit
+          npx tsc -p server/tsconfig.json --noEmit
 
-      - name: Deploy on server
+  deploy:
+    needs: typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to server
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: root
           password: ${{ secrets.SERVER_PASSWORD }}
-          command_timeout: 10m
+          command_timeout: 40m
           script: |
             set -e
 
@@ -58,18 +55,23 @@ jobs:
             fi
 
             cd /opt/wb-cyber-club-dev
+
+            # Retry git fetch
             for i in 1 2 3; do
+              echo "Git fetch attempt $i..."
               git fetch origin mvp-2 && break
+              echo "Attempt $i failed, retrying in 10s..."
               sleep 10
             done
             git reset --hard origin/mvp-2
 
-            # Load pre-built image
-            docker load < /tmp/image.tar.gz
-            rm -f /tmp/image.tar.gz
+            # BuildKit for npm cache mount support
+            export DOCKER_BUILDKIT=1
+            export COMPOSE_DOCKER_CLI_BUILD=1
 
-            # Restart
-            docker compose -f docker-compose.staging.yml up -d
+            # Rebuild only app, keep postgres running
+            docker compose -f docker-compose.staging.yml stop app-dev || true
+            docker compose -f docker-compose.staging.yml up -d --build app-dev
             docker image prune -f
 
             echo "Dev deploy completed at $(date)"
@@ -96,7 +98,7 @@ jobs:
             echo "App status: $STATUS"
 
             if echo "$STATUS" | grep -qi "restarting\|exited"; then
-              echo "❌ DEPLOY FAILED"
+              echo "DEPLOY FAILED"
               exit 1
             fi
 
@@ -104,8 +106,8 @@ jobs:
             echo "Health endpoint: HTTP $HEALTH"
 
             if [ "$HEALTH" = "200" ] || [ "$HEALTH" = "401" ]; then
-              echo "✅ Deploy OK"
+              echo "Deploy OK"
             else
-              echo "⚠️ Health check returned $HEALTH"
+              echo "Health check returned $HEALTH"
               exit 1
             fi

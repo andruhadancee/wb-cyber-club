@@ -49,4 +49,16 @@ router.delete('/', parseIdFromQuery, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+router.delete('/by-tournament', async (req, res, next) => {
+  try {
+    const tournamentId = Number(req.query.tournamentId);
+    if (!tournamentId || isNaN(tournamentId) || tournamentId <= 0) {
+      res.status(400).json({ error: 'Некорректный tournamentId' });
+      return;
+    }
+    const result = await teamService.removeByTournament(tournamentId);
+    res.json(result);
+  } catch (err) { next(err); }
+});
+
 export default router;

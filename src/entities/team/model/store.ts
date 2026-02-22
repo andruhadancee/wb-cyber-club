@@ -59,6 +59,17 @@ export function useBulkCreateTeams() {
   });
 }
 
+export function useRemoveTeamsByTournament() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (tournamentId: number) => teamApi.removeByTournament(tournamentId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.teams.all });
+      qc.invalidateQueries({ queryKey: queryKeys.tournaments.all });
+    },
+  });
+}
+
 // ─── Backward-compatible hook (replaces useTeamStore) ───
 
 export function useTeamStore() {
@@ -66,11 +77,13 @@ export function useTeamStore() {
   const createMut = useCreateTeam();
   const updateMut = useUpdateTeam();
   const removeMut = useRemoveTeam();
+  const removeByTournamentMut = useRemoveTeamsByTournament();
 
   const fetchAll = useCallback(async (_status?: string) => { await teamsQuery.refetch(); }, [teamsQuery.refetch]);
   const createTeam = useCallback(async (data: TeamFormData) => { await createMut.mutateAsync(data); }, [createMut.mutateAsync]);
   const updateTeam = useCallback(async (data: TeamFormData) => { await updateMut.mutateAsync(data); }, [updateMut.mutateAsync]);
   const removeTeam = useCallback(async (id: number) => { await removeMut.mutateAsync(id); }, [removeMut.mutateAsync]);
+  const removeByTournament = useCallback(async (tournamentId: number) => { await removeByTournamentMut.mutateAsync(tournamentId); }, [removeByTournamentMut.mutateAsync]);
 
   return {
     teamsByTournament: teamsQuery.data ?? {},
@@ -80,5 +93,6 @@ export function useTeamStore() {
     createTeam,
     updateTeam,
     removeTeam,
+    removeByTournament,
   };
 }

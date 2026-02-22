@@ -26,4 +26,8 @@ export const teamApi = {
   async remove(id: number): Promise<void> {
     await apiDelete(`/api/teams?id=${id}`);
   },
+
+  async removeByTournament(tournamentId: number): Promise<{ deleted: number }> {
+    return apiDelete<{ deleted: number }>(`/api/teams/by-tournament?tournamentId=${tournamentId}`);
+  },
 };
