@@ -87,7 +87,7 @@ jobs:
             git fetch origin mvp-2 && git reset --hard origin/mvp-2
 
             # Restart app
-            docker compose $COMPOSE up -d --force-recreate app-dev
+            docker compose $COMPOSE up -d --force-recreate --remove-orphans app-dev
             docker image prune -f
 
             echo "Dev deploy completed at $(date)"

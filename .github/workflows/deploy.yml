@@ -79,7 +79,7 @@ jobs:
             cd /opt/wb-cyber-club
             git fetch origin mvp && git reset --hard origin/mvp
 
-            docker compose up -d --force-recreate app
+            docker compose up -d --force-recreate --remove-orphans app
             docker image prune -f
 
             echo "Deploy completed at $(date)"
