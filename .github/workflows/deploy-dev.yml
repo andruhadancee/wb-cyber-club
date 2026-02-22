@@ -75,9 +75,8 @@ jobs:
             cd /opt/wb-cyber-club-dev
             git fetch origin mvp-2 && git reset --hard origin/mvp-2
 
-            # Restart app (migrations run inside entrypoint)
-            docker compose $COMPOSE stop app-dev || true
-            docker compose $COMPOSE up -d app-dev
+            # Restart app with new image (migrations run inside entrypoint)
+            docker compose $COMPOSE up -d --force-recreate app-dev
             docker image prune -f
 
             echo "Dev deploy completed at $(date)"

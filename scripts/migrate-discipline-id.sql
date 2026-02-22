@@ -165,52 +165,69 @@ END $$;
 
 -- ═══════════════════════════════════════════
 -- Удаление старых varchar-столбцов
--- (после бэкфилла они больше не нужны)
+-- Каждая таблица в отдельном блоке — ошибка
+-- в одной не блокирует остальные
 -- ═══════════════════════════════════════════
+
+-- Drop tournaments.discipline
 DO $$
 BEGIN
-  -- tournaments.discipline (varchar)
   IF EXISTS (
     SELECT 1 FROM information_schema.columns
     WHERE table_name = 'tournaments' AND column_name = 'discipline' AND data_type = 'character varying'
   ) THEN
-    -- Сначала убираем индекс если он на varchar
     DROP INDEX IF EXISTS idx_tournaments_discipline;
     ALTER TABLE tournaments DROP COLUMN discipline;
-    -- Prisma db push создаст новый индекс на discipline_id
+    RAISE NOTICE 'Dropped tournaments.discipline';
   END IF;
+END $$;
 
-  -- calendar_events.discipline (varchar)
+-- Drop calendar_events.discipline
+DO $$
+BEGIN
   IF EXISTS (
     SELECT 1 FROM information_schema.columns
     WHERE table_name = 'calendar_events' AND column_name = 'discipline' AND data_type = 'character varying'
   ) THEN
     ALTER TABLE calendar_events DROP COLUMN discipline;
+    RAISE NOTICE 'Dropped calendar_events.discipline';
   END IF;
+END $$;
 
-  -- registration_links.discipline (varchar)
+-- Drop registration_links.discipline (UNIQUE CONSTRAINT)
+DO $$
+BEGIN
   IF EXISTS (
     SELECT 1 FROM information_schema.columns
     WHERE table_name = 'registration_links' AND column_name = 'discipline' AND data_type = 'character varying'
   ) THEN
-    DROP INDEX IF EXISTS registration_links_discipline_key;
+    ALTER TABLE registration_links DROP CONSTRAINT IF EXISTS registration_links_discipline_key;
     ALTER TABLE registration_links DROP COLUMN discipline;
+    RAISE NOTICE 'Dropped registration_links.discipline';
   END IF;
+END $$;
 
-  -- registration_links.discipline_name (varchar)
+-- Drop registration_links.discipline_name
+DO $$
+BEGIN
   IF EXISTS (
     SELECT 1 FROM information_schema.columns
     WHERE table_name = 'registration_links' AND column_name = 'discipline_name'
   ) THEN
     ALTER TABLE registration_links DROP COLUMN discipline_name;
+    RAISE NOTICE 'Dropped registration_links.discipline_name';
   END IF;
+END $$;
 
-  -- regulations.discipline_name (varchar)
+-- Drop regulations.discipline_name
+DO $$
+BEGIN
   IF EXISTS (
     SELECT 1 FROM information_schema.columns
     WHERE table_name = 'regulations' AND column_name = 'discipline_name'
   ) THEN
     DROP INDEX IF EXISTS idx_regulations_discipline;
     ALTER TABLE regulations DROP COLUMN discipline_name;
+    RAISE NOTICE 'Dropped regulations.discipline_name';
   END IF;
 END $$;
