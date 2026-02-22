@@ -2,16 +2,7 @@ import { apiGet, apiPost, apiPut, apiDelete } from '@/shared/api';
 import { API_BASE_URL } from '@/shared/api/config';
 import type { Discipline } from '../types';
 
-const FALLBACK_DISCIPLINES: Discipline[] = [
-  'CS 2', 'Dota 2', 'Valorant', 'Overwatch 2', 'League of Legends',
-].map((name, i) => ({
-  id: i + 1,
-  name,
-  color: null,
-  logo_url: null,
-  created_at: '',
-  updated_at: '',
-}));
+const EMPTY_DISCIPLINES: Discipline[] = [];
 
 export const disciplineApi = {
   async getAll(): Promise<Discipline[]> {
@@ -20,9 +11,9 @@ export const disciplineApi = {
       if (Array.isArray(data) && data.length > 0 && typeof data[0] === 'object') {
         return data;
       }
-      return FALLBACK_DISCIPLINES;
+      return EMPTY_DISCIPLINES;
     } catch {
-      return FALLBACK_DISCIPLINES;
+      return EMPTY_DISCIPLINES;
     }
   },
 
