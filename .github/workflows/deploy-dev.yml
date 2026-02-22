@@ -11,6 +11,9 @@ concurrency:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     steps:
       - uses: actions/checkout@v4
 
@@ -26,29 +29,19 @@ jobs:
           npx tsc --noEmit
           npx tsc -p server/tsconfig.json --noEmit
 
-      - name: Build Docker image
-        run: |
-          DOCKER_BUILDKIT=1 docker build -t wb-cyber-club-dev:latest .
-          echo "── Image size ──"
-          docker images wb-cyber-club-dev:latest --format '{{.Size}}'
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Save & compress image
+      - name: Build & push image
         run: |
-          docker save wb-cyber-club-dev:latest | gzip > /tmp/image.tar.gz
-          ls -lh /tmp/image.tar.gz
-
-      - name: Install sshpass
-        run: sudo apt-get update && sudo apt-get install -y sshpass
-
-      - name: Transfer image to server
-        env:
-          SERVER_HOST: ${{ secrets.SERVER_HOST }}
-          SERVER_PASSWORD: ${{ secrets.SERVER_PASSWORD }}
-        run: |
-          sshpass -p "$SERVER_PASSWORD" \
-            scp -o StrictHostKeyChecking=no -o ConnectTimeout=60 -o ServerAliveInterval=15 \
-            /tmp/image.tar.gz \
-            root@"$SERVER_HOST":/tmp/wb-cyber-club-dev.tar.gz
+          IMAGE=ghcr.io/${{ github.repository }}/dev:latest
+          DOCKER_BUILDKIT=1 docker build -t "$IMAGE" .
+          docker push "$IMAGE"
+          echo "Image pushed: $IMAGE"
 
       - name: Deploy on server
         uses: appleboy/ssh-action@v1
@@ -60,13 +53,27 @@ jobs:
           script: |
             set -e
 
-            echo "══ Loading Docker image ══"
-            docker load < /tmp/wb-cyber-club-dev.tar.gz
-            rm -f /tmp/wb-cyber-club-dev.tar.gz
+            IMAGE=ghcr.io/${{ github.repository }}/dev:latest
 
             # DNS fallback
             grep -q "8.8.8.8" /etc/resolv.conf || echo "nameserver 8.8.8.8" >> /etc/resolv.conf
+            grep -q "1.1.1.1" /etc/resolv.conf || echo "nameserver 1.1.1.1" >> /etc/resolv.conf
 
+            # Login to GHCR
+            echo "${{ secrets.GH_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+            # Pull with retry
+            for i in 1 2 3; do
+              echo "Pull attempt $i..."
+              docker pull "$IMAGE" && break
+              echo "Attempt $i failed, retrying in 15s..."
+              sleep 15
+            done
+
+            # Tag for compose
+            docker tag "$IMAGE" wb-cyber-club-dev:latest
+
+            # Update compose files
             if [ ! -d /opt/wb-cyber-club-dev ]; then
               git clone -b mvp-2 https://${{ secrets.GH_TOKEN }}@github.com/andruhadancee/wb-cyber-club.git /opt/wb-cyber-club-dev
             fi
