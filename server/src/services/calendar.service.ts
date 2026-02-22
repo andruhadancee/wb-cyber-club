@@ -82,8 +82,8 @@ async function getArchivedTournamentsForMonth(month: string) {
       discipline_logo_url: disc?.logo_url ?? null,
       prize: t.prize,
       max_teams: t.max_teams,
-      registration_link: null,
-      custom_link: null,
+      registration_link: t.registration_link,
+      custom_link: t.custom_link,
       tournament_id: t.id,
       start_time: t.start_time,
       watch_url: t.watch_url,
@@ -179,6 +179,7 @@ export async function update(data: UpdateCalendarEventInput) {
         custom_link: data.customLink || data.registrationLink || null,
         start_time: parseStartTime(data.startTime),
         watch_url: data.watchUrl || null,
+        image_url: data.imageUrl || null,
         updated_at: new Date(),
       },
     });
