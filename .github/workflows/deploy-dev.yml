@@ -9,7 +9,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  typecheck:
+  build-and-deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -19,59 +19,63 @@ jobs:
           node-version: 20
           cache: npm
 
-      - name: Install dependencies
-        run: npm ci --registry=https://registry.npmjs.org/
-
-      - name: Generate Prisma client
-        run: npx prisma generate --schema=server/prisma/schema.prisma
-
-      - name: Typecheck
+      - name: Install & typecheck
         run: |
+          npm ci --registry=https://registry.npmjs.org/
+          npx prisma generate --schema=server/prisma/schema.prisma
           npx tsc --noEmit
           npx tsc -p server/tsconfig.json --noEmit
 
-  deploy:
-    needs: typecheck
-    runs-on: ubuntu-latest
-    steps:
-      - name: Deploy to server
+      - name: Build Docker image
+        run: |
+          DOCKER_BUILDKIT=1 docker build -t wb-cyber-club-dev:latest .
+          echo "── Image size ──"
+          docker images wb-cyber-club-dev:latest --format '{{.Size}}'
+
+      - name: Save & compress image
+        run: |
+          docker save wb-cyber-club-dev:latest | gzip > /tmp/image.tar.gz
+          ls -lh /tmp/image.tar.gz
+
+      - name: Install sshpass
+        run: sudo apt-get update && sudo apt-get install -y sshpass
+
+      - name: Transfer image to server
+        env:
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_PASSWORD: ${{ secrets.SERVER_PASSWORD }}
+        run: |
+          sshpass -p "$SERVER_PASSWORD" \
+            scp -o StrictHostKeyChecking=no -o ConnectTimeout=60 -o ServerAliveInterval=15 \
+            /tmp/image.tar.gz \
+            root@"$SERVER_HOST":/tmp/wb-cyber-club-dev.tar.gz
+
+      - name: Deploy on server
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: root
           password: ${{ secrets.SERVER_PASSWORD }}
-          command_timeout: 40m
+          command_timeout: 10m
           script: |
             set -e
 
-            # DNS fallback
-            if ! host github.com >/dev/null 2>&1; then
-              grep -q "8.8.8.8" /etc/resolv.conf || echo "nameserver 8.8.8.8" >> /etc/resolv.conf
-            fi
+            echo "══ Loading Docker image ══"
+            docker load < /tmp/wb-cyber-club-dev.tar.gz
+            rm -f /tmp/wb-cyber-club-dev.tar.gz
 
-            # Clone repo if first time
+            # DNS fallback
+            grep -q "8.8.8.8" /etc/resolv.conf || echo "nameserver 8.8.8.8" >> /etc/resolv.conf
+
             if [ ! -d /opt/wb-cyber-club-dev ]; then
               git clone -b mvp-2 https://${{ secrets.GH_TOKEN }}@github.com/andruhadancee/wb-cyber-club.git /opt/wb-cyber-club-dev
             fi
 
             cd /opt/wb-cyber-club-dev
+            git fetch origin mvp-2 && git reset --hard origin/mvp-2
 
-            # Retry git fetch
-            for i in 1 2 3; do
-              echo "Git fetch attempt $i..."
-              git fetch origin mvp-2 && break
-              echo "Attempt $i failed, retrying in 10s..."
-              sleep 10
-            done
-            git reset --hard origin/mvp-2
-
-            # BuildKit for npm cache mount support
-            export DOCKER_BUILDKIT=1
-            export COMPOSE_DOCKER_CLI_BUILD=1
-
-            # Rebuild only app, keep postgres running
             docker compose -f docker-compose.staging.yml stop app-dev || true
-            docker compose -f docker-compose.staging.yml up -d --build app-dev
+            docker compose -f docker-compose.staging.yml up -d app-dev
             docker image prune -f
 
             echo "Dev deploy completed at $(date)"
@@ -85,15 +89,15 @@ jobs:
           script: |
             cd /opt/wb-cyber-club-dev
 
-            echo "══════════ Container status ══════════"
+            echo "══ Container status ══"
             docker compose -f docker-compose.staging.yml ps
 
             sleep 15
 
-            echo "══════════ App logs (last 40 lines) ══════════"
+            echo "══ App logs (last 40) ══"
             docker compose -f docker-compose.staging.yml logs app-dev --tail 40 --no-color
 
-            echo "══════════ Health check ══════════"
+            echo "══ Health check ══"
             STATUS=$(docker compose -f docker-compose.staging.yml ps app-dev --format '{{.Status}}')
             echo "App status: $STATUS"
 

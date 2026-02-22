@@ -9,7 +9,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  typecheck:
+  build-and-deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -19,54 +19,93 @@ jobs:
           node-version: 20
           cache: npm
 
-      - name: Install dependencies
-        run: npm ci --registry=https://registry.npmjs.org/
+      - name: Install & typecheck
+        run: |
+          npm ci --registry=https://registry.npmjs.org/
+          npx prisma generate --schema=server/prisma/schema.prisma
+          npx tsc --noEmit
+          npx tsc -p server/tsconfig.json --noEmit
 
-      - name: Generate Prisma client
-        run: npx prisma generate --schema=server/prisma/schema.prisma
+      - name: Build Docker image
+        run: |
+          DOCKER_BUILDKIT=1 docker build -t wb-cyber-club:latest .
+          echo "── Image size ──"
+          docker images wb-cyber-club:latest --format '{{.Size}}'
 
-      - name: Typecheck frontend
-        run: npx tsc --noEmit
+      - name: Save & compress image
+        run: |
+          docker save wb-cyber-club:latest | gzip > /tmp/image.tar.gz
+          ls -lh /tmp/image.tar.gz
 
-      - name: Typecheck backend
-        run: npx tsc -p server/tsconfig.json --noEmit
+      - name: Install sshpass
+        run: sudo apt-get update && sudo apt-get install -y sshpass
 
-  deploy:
-    needs: typecheck
-    runs-on: ubuntu-latest
-    steps:
-      - name: Deploy to server via SSH
+      - name: Transfer image to server
+        env:
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_PASSWORD: ${{ secrets.SERVER_PASSWORD }}
+        run: |
+          sshpass -p "$SERVER_PASSWORD" \
+            scp -o StrictHostKeyChecking=no -o ConnectTimeout=60 -o ServerAliveInterval=15 \
+            /tmp/image.tar.gz \
+            root@"$SERVER_HOST":/tmp/wb-cyber-club.tar.gz
+
+      - name: Deploy on server
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: root
           password: ${{ secrets.SERVER_PASSWORD }}
-          command_timeout: 40m
+          command_timeout: 10m
           script: |
             set -e
 
-            # DNS fallback
-            if ! host github.com >/dev/null 2>&1; then
-              grep -q "8.8.8.8" /etc/resolv.conf || echo "nameserver 8.8.8.8" >> /etc/resolv.conf
-            fi
+            echo "══ Loading Docker image ══"
+            docker load < /tmp/wb-cyber-club.tar.gz
+            rm -f /tmp/wb-cyber-club.tar.gz
 
             cd /opt/wb-cyber-club
 
-            # Retry git pull
-            for i in 1 2 3; do
-              echo "Git pull attempt $i..."
-              git pull origin mvp && break
-              echo "Attempt $i failed, retrying in 10s..."
-              sleep 10
-            done
+            git fetch origin mvp && git reset --hard origin/mvp
 
-            # BuildKit for npm cache mount support
-            export DOCKER_BUILDKIT=1
-            export COMPOSE_DOCKER_CLI_BUILD=1
-
-            # Rebuild only app, keep postgres/nginx running
             docker compose stop app || true
-            docker compose up -d --build app
+            docker compose up -d app
             docker image prune -f
 
             echo "Deploy completed at $(date)"
+
+      - name: Verify deployment
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: root
+          password: ${{ secrets.SERVER_PASSWORD }}
+          script: |
+            cd /opt/wb-cyber-club
+
+            echo "══ Container status ══"
+            docker compose ps
+
+            sleep 15
+
+            echo "══ App logs (last 40) ══"
+            docker compose logs app --tail 40 --no-color
+
+            echo "══ Health check ══"
+            STATUS=$(docker compose ps app --format '{{.Status}}')
+            echo "App status: $STATUS"
+
+            if echo "$STATUS" | grep -qi "restarting\|exited"; then
+              echo "DEPLOY FAILED"
+              exit 1
+            fi
+
+            HEALTH=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 http://localhost:3000/api/health 2>/dev/null || echo "000")
+            echo "Health endpoint: HTTP $HEALTH"
+
+            if [ "$HEALTH" = "200" ] || [ "$HEALTH" = "401" ]; then
+              echo "Deploy OK"
+            else
+              echo "Health check returned $HEALTH"
+              exit 1
+            fi
