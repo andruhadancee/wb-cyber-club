@@ -3,8 +3,8 @@ import { cacheInvalidate } from '../cache';
 import type { SaveSocialLinksInput } from '../schemas/social.schema';
 import type { SocialLinks } from '@wb/shared';
 
-function invalidateCache(): void {
-  cacheInvalidate('route:/api/social');
+async function invalidateCache(): Promise<void> {
+  await cacheInvalidate('route:/api/social');
 }
 
 export async function getAll(): Promise<SocialLinks> {
@@ -33,5 +33,5 @@ export async function save(data: SaveSocialLinksInput): Promise<void> {
     }
   });
 
-  invalidateCache();
+  await invalidateCache();
 }

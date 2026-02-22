@@ -1,45 +1,82 @@
 import type { Request, Response, NextFunction } from 'express';
+import { getRedis } from './redis';
+import logger from './logger';
 
-const DEFAULT_TTL = 60_000; // 60 seconds
+const DEFAULT_TTL_SEC = 60;
 
-interface CacheEntry<T = unknown> {
-  data: T;
-  expiresAt: number;
+const memStore = new Map<string, { data: unknown; expiresAt: number }>();
+
+function isRedisReady(): boolean {
+  try {
+    return getRedis().status === 'ready';
+  } catch {
+    return false;
+  }
 }
 
-const store = new Map<string, CacheEntry>();
+export async function cacheGet<T>(key: string): Promise<T | null> {
+  if (isRedisReady()) {
+    try {
+      const raw = await getRedis().get(key);
+      return raw ? (JSON.parse(raw) as T) : null;
+    } catch (err) {
+      logger.debug({ err, key }, 'Redis cacheGet failed, falling back');
+    }
+  }
 
-export function cacheGet<T>(key: string): T | null {
-  const entry = store.get(key);
+  const entry = memStore.get(key);
   if (!entry) return null;
   if (Date.now() > entry.expiresAt) {
-    store.delete(key);
+    memStore.delete(key);
     return null;
   }
   return entry.data as T;
 }
 
-export function cacheSet<T>(key: string, data: T, ttl = DEFAULT_TTL): void {
-  store.set(key, { data, expiresAt: Date.now() + ttl });
+export async function cacheSet<T>(key: string, data: T, ttlSec = DEFAULT_TTL_SEC): Promise<void> {
+  if (isRedisReady()) {
+    try {
+      await getRedis().set(key, JSON.stringify(data), 'EX', ttlSec);
+      return;
+    } catch (err) {
+      logger.debug({ err, key }, 'Redis cacheSet failed, falling back');
+    }
+  }
+
+  memStore.set(key, { data, expiresAt: Date.now() + ttlSec * 1000 });
 }
 
-export function cacheInvalidate(pattern: string): void {
-  for (const key of store.keys()) {
+export async function cacheInvalidate(pattern: string): Promise<void> {
+  if (isRedisReady()) {
+    try {
+      const keys = await getRedis().keys(`${pattern}*`);
+      if (keys.length > 0) {
+        await getRedis().del(...keys);
+      }
+    } catch (err) {
+      logger.debug({ err, pattern }, 'Redis cacheInvalidate failed');
+    }
+  }
+
+  for (const key of memStore.keys()) {
     if (key === pattern || key.startsWith(pattern)) {
-      store.delete(key);
+      memStore.delete(key);
     }
   }
 }
 
-export function cacheClear(): void {
-  store.clear();
+export async function cacheClear(): Promise<void> {
+  if (isRedisReady()) {
+    try {
+      await getRedis().flushdb();
+    } catch {
+      // ignore
+    }
+  }
+  memStore.clear();
 }
 
-/**
- * Express middleware: caches GET responses by req.originalUrl.
- * Use only for read-heavy routes.
- */
-export function cacheMiddleware(ttl = DEFAULT_TTL) {
+export function cacheMiddleware(ttlSec = DEFAULT_TTL_SEC) {
   return (req: Request, res: Response, next: NextFunction): void => {
     if (req.method !== 'GET') {
       next();
@@ -47,20 +84,23 @@ export function cacheMiddleware(ttl = DEFAULT_TTL) {
     }
 
     const key = `route:${req.originalUrl}`;
-    const cached = cacheGet(key);
-    if (cached) {
-      res.json(cached);
-      return;
-    }
 
-    const originalJson = res.json.bind(res);
-    res.json = (data: unknown) => {
-      if (res.statusCode >= 200 && res.statusCode < 300) {
-        cacheSet(key, data, ttl);
-      }
-      return originalJson(data);
-    };
+    cacheGet(key)
+      .then((cached) => {
+        if (cached) {
+          res.json(cached);
+          return;
+        }
 
-    next();
+        const originalJson = res.json.bind(res);
+        res.json = (data: unknown) => {
+          if (res.statusCode >= 200 && res.statusCode < 300) {
+            cacheSet(key, data, ttlSec).catch(() => {});
+          }
+          return originalJson(data);
+        };
+        next();
+      })
+      .catch(() => next());
   };
 }

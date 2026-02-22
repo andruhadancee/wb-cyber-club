@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
 import { AppError } from '../app-error';
+import logger from '../logger';
 
 export function errorHandler(
   err: Error,
@@ -12,7 +13,7 @@ export function errorHandler(
     return;
   }
 
-  console.error('[ERROR]', err);
+  logger.error({ err }, 'Unhandled server error');
   res.status(500).json({
     error: 'Ошибка сервера',
     ...(process.env.NODE_ENV !== 'production' && { details: err.message }),

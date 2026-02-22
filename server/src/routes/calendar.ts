@@ -7,7 +7,7 @@ import { parseIdFromQuery } from '../middleware/parseId';
 
 const router = Router();
 
-router.get('/', cacheMiddleware(30_000), async (req, res, next) => {
+router.get('/', cacheMiddleware(30), async (req, res, next) => {
   try {
     const month = req.query.month as string | undefined;
     const events = await calendarService.getAll(month);

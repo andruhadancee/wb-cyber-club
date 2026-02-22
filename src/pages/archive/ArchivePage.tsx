@@ -16,7 +16,7 @@ import HistoryIcon from '@mui/icons-material/History';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import { useTournamentStore } from '@/entities/tournament/model';
 import { DisciplineFilter } from '@/features/discipline-filter/DisciplineFilter';
-import { formatDateForDisplay, parseTournamentDate } from '@/shared/lib/date';
+import { formatDateForDisplay } from '@/shared/lib/date';
 import { getDisciplineIconUrl } from '@/shared/lib/discipline-icons';
 import { getDisciplineColor } from '@/shared/lib/discipline-colors';
 import { alpha } from '@mui/material/styles';
@@ -29,16 +29,8 @@ export function ArchivePage() {
   const [selected, setSelected] = useState('all');
 
   const sorted = useMemo(() => {
-    let list = [...pastTournaments];
-    if (selected !== 'all') list = list.filter((t) => t.discipline === selected);
-    return list.sort((a, b) => {
-      const da = parseTournamentDate(a.date);
-      const db = parseTournamentDate(b.date);
-      if (!da && !db) return 0;
-      if (!da) return 1;
-      if (!db) return -1;
-      return db.getTime() - da.getTime();
-    });
+    if (selected === 'all') return pastTournaments;
+    return pastTournaments.filter((t) => t.discipline === selected);
   }, [pastTournaments, selected]);
 
   const available = [...new Set(pastTournaments.map((t) => t.discipline))];

@@ -4,8 +4,8 @@ import { cacheInvalidate } from '../cache';
 import type { CreateDisciplineInput, UpdateDisciplineInput } from '../schemas/discipline.schema';
 import type { Discipline } from '@prisma/client';
 
-function invalidateCache(): void {
-  cacheInvalidate('route:/api/disciplines');
+async function invalidateCache(): Promise<void> {
+  await cacheInvalidate('route:/api/disciplines');
 }
 
 export async function getAll(): Promise<Discipline[]> {
@@ -23,7 +23,7 @@ export async function create(data: CreateDisciplineInput): Promise<Discipline> {
         logo_url: data.logo_url || null,
       },
     });
-    invalidateCache();
+    await invalidateCache();
     return discipline;
   } catch (error: unknown) {
     if (error && typeof error === 'object' && 'code' in error && (error as { code: string }).code === 'P2002') {
@@ -45,7 +45,7 @@ export async function update(data: UpdateDisciplineInput): Promise<Discipline> {
   });
 
   if (!discipline) throw AppError.notFound('Дисциплина не найдена');
-  invalidateCache();
+  await invalidateCache();
   return discipline;
 }
 
@@ -54,5 +54,5 @@ export async function remove(id: number): Promise<void> {
   if (!discipline) throw AppError.notFound('Дисциплина не найдена');
 
   await prisma.discipline.delete({ where: { id } });
-  invalidateCache();
+  await invalidateCache();
 }

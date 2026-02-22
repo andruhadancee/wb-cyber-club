@@ -7,9 +7,11 @@ import type { CreateCalendarEventInput, UpdateCalendarEventInput } from '../sche
 
 const INCLUDE_DISCIPLINE = { discipline: { select: { id: true, name: true, color: true, logo_url: true } } } as const;
 
-function invalidateCalendarCaches(): void {
-  cacheInvalidate('route:/api/calendar');
-  cacheInvalidate('route:/api/tournaments');
+async function invalidateCalendarCaches(): Promise<void> {
+  await Promise.all([
+    cacheInvalidate('route:/api/calendar'),
+    cacheInvalidate('route:/api/tournaments'),
+  ]);
 }
 
 function flattenEvent(e: any) {
@@ -155,7 +157,7 @@ export async function create(data: CreateCalendarEventInput) {
     });
   }
 
-  invalidateCalendarCaches();
+  await invalidateCalendarCaches();
   return flattenEvent(result);
 }
 
@@ -203,7 +205,7 @@ export async function update(data: UpdateCalendarEventInput) {
 
   if (!event) throw AppError.notFound('Событие не найдено');
 
-  invalidateCalendarCaches();
+  await invalidateCalendarCaches();
   return flattenEvent(event);
 }
 
@@ -225,6 +227,6 @@ export async function remove(id: number) {
     }
   }
 
-  invalidateCalendarCaches();
+  await invalidateCalendarCaches();
   return flattenEvent(deleted);
 }

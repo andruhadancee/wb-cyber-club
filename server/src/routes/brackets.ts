@@ -7,7 +7,7 @@ import { cacheMiddleware } from '../cache';
 const router = Router();
 
 /** GET /api/brackets?tournamentId=X — public */
-router.get('/', cacheMiddleware(30_000), async (req, res, next) => {
+router.get('/', cacheMiddleware(30), async (req, res, next) => {
   try {
     const tournamentId = Number(req.query.tournamentId);
     if (!tournamentId) {

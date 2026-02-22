@@ -44,8 +44,8 @@ function cacheKey(tid: number): string {
   return `route:/api/brackets?tournamentId=${tid}`;
 }
 
-function invalidateCache(tid: number): void {
-  cacheInvalidate(cacheKey(tid));
+async function invalidateCache(tid: number): Promise<void> {
+  await cacheInvalidate(cacheKey(tid));
 }
 
 function shuffle<T>(arr: T[]): T[] {
@@ -198,7 +198,7 @@ export async function generate(tournamentId: number, format: BracketFormat = 'si
     await autoCompleteByes(tournamentId);
   }
 
-  invalidateCache(tournamentId);
+  await invalidateCache(tournamentId);
 
   return prisma.bracketMatch.findMany({
     where: { tournament_id: tournamentId },
@@ -336,13 +336,13 @@ export async function updateMatch(
   // Always sweep for BYE scenarios after any change (including rollback / reopen)
   await autoCompleteByes(match.tournament_id);
 
-  invalidateCache(match.tournament_id);
+  await invalidateCache(match.tournament_id);
   return updated;
 }
 
 export async function deleteByTournament(tournamentId: number): Promise<void> {
   await prisma.bracketMatch.deleteMany({ where: { tournament_id: tournamentId } });
-  invalidateCache(tournamentId);
+  await invalidateCache(tournamentId);
 }
 
 // ═══════════════════ Internal Helpers ═══════════════════

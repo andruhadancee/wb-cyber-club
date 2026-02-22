@@ -1,8 +1,8 @@
 import prisma from '../prisma';
 import { cacheInvalidate } from '../cache';
 
-function invalidateCache(): void {
-  cacheInvalidate('route:/api/links');
+async function invalidateCache(): Promise<void> {
+  await cacheInvalidate('route:/api/links');
 }
 
 /** Returns Record<disciplineId (string), link> */
@@ -35,5 +35,5 @@ export async function save(links: Record<string, string>): Promise<void> {
     }
   });
 
-  invalidateCache();
+  await invalidateCache();
 }

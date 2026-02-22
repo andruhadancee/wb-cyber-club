@@ -6,7 +6,7 @@ import { cacheMiddleware } from '../cache';
 
 const router = Router();
 
-router.get('/', cacheMiddleware(60_000), async (_req, res, next) => {
+router.get('/', cacheMiddleware(60), async (_req, res, next) => {
   try {
     const disciplines = await disciplineService.getAll();
     res.json(disciplines);

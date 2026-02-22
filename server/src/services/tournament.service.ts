@@ -3,13 +3,16 @@ import prisma from '../prisma';
 import { AppError } from '../app-error';
 import { parseRussianDateToISO, parseDateForSort, parseStartTime, todayMSK } from '../date-utils';
 import { cacheInvalidate } from '../cache';
+import logger from '../logger';
 import type { CreateTournamentInput, UpdateTournamentInput } from '../schemas/tournament.schema';
 
 const INCLUDE_DISCIPLINE = { discipline: { select: { id: true, name: true, color: true, logo_url: true } } } as const;
 
-function invalidateTournamentCaches(): void {
-  cacheInvalidate('route:/api/tournaments');
-  cacheInvalidate('route:/api/calendar');
+async function invalidateTournamentCaches(): Promise<void> {
+  await Promise.all([
+    cacheInvalidate('route:/api/tournaments'),
+    cacheInvalidate('route:/api/calendar'),
+  ]);
 }
 
 function sanitiseUrl(value: string | null | undefined): string | null {
@@ -29,12 +32,15 @@ function flattenTournament(t: NonNullable<TournamentWithDiscipline>, hasBracket 
 
 export async function getAll(status?: string) {
   const where = status ? { status } : {};
+  const isArchive = status === 'finished';
+
   const tournaments = await prisma.tournament.findMany({
     where,
     include: INCLUDE_DISCIPLINE,
-    orderBy: { date: 'asc' },
+    orderBy: { date: isArchive ? 'desc' : 'asc' },
   });
 
+  const direction = isArchive ? -1 : 1;
   tournaments.sort((a: NonNullable<TournamentWithDiscipline>, b: NonNullable<TournamentWithDiscipline>) => {
     const dateA = dayjs(parseDateForSort(a.date));
     const dateB = dayjs(parseDateForSort(b.date));
@@ -42,11 +48,11 @@ export async function getAll(status?: string) {
     const timeB = b.start_time?.toString().match(/(\d{1,2}):(\d{2})/);
     const fullA = timeA ? dateA.hour(parseInt(timeA[1])).minute(parseInt(timeA[2])) : dateA;
     const fullB = timeB ? dateB.hour(parseInt(timeB[1])).minute(parseInt(timeB[2])) : dateB;
-    return fullA.valueOf() - fullB.valueOf();
+    return (fullA.valueOf() - fullB.valueOf()) * direction;
   });
 
   syncCalendarEvents(tournaments).catch((err) =>
-    console.error('[tournament.getAll] calendar sync error:', err),
+    logger.error({ err }, 'Calendar sync failed'),
   );
 
   const bracketCounts = await prisma.bracketMatch.groupBy({
@@ -90,7 +96,7 @@ async function syncCalendarEvents(tournaments: TournamentWithDiscipline[]): Prom
           },
         });
       } catch (err) {
-        console.error(`Error creating calendar event for tournament ${t.id}:`, err);
+        logger.error({ err, tournamentId: t.id }, 'Failed to create calendar event');
       }
     }
   }
@@ -145,7 +151,7 @@ export async function create(data: CreateTournamentInput) {
     }
   }
 
-  invalidateTournamentCaches();
+  await invalidateTournamentCaches();
   return flattenTournament(tournament);
 }
 
@@ -198,7 +204,7 @@ export async function update(data: UpdateTournamentInput) {
     await prisma.calendarEvent.deleteMany({ where: { tournament_id: data.id } });
   }
 
-  invalidateTournamentCaches();
+  await invalidateTournamentCaches();
   return flattenTournament(tournament);
 }
 
@@ -236,8 +242,8 @@ export async function autoArchiveExpired(): Promise<number> {
     }),
   ]);
 
-  invalidateTournamentCaches();
-  console.log(`[auto-archive] Archived ${expiredIds.length} tournament(s): ${expiredIds.join(', ')}`);
+  await invalidateTournamentCaches();
+  logger.info({ count: expiredIds.length, ids: expiredIds }, 'Auto-archived tournaments');
   return expiredIds.length;
 }
 
@@ -250,6 +256,6 @@ export async function remove(id: number) {
   });
   if (!tournament) throw AppError.notFound('Турнир не найден');
 
-  invalidateTournamentCaches();
+  await invalidateTournamentCaches();
   return flattenTournament(tournament);
 }

@@ -1,5 +1,6 @@
 import prisma from '../prisma';
 import { parseRussianDateToISO, todayMSK } from '../date-utils';
+import logger from '../logger';
 
 interface ArchiveResult {
   message: string;
@@ -7,7 +8,7 @@ interface ArchiveResult {
 }
 
 export async function autoArchive(): Promise<ArchiveResult> {
-  console.log('Running auto-archive...');
+  logger.debug('Running auto-archive');
 
   const tournaments = await prisma.tournament.findMany({
     where: { status: 'active' },
@@ -35,10 +36,10 @@ export async function autoArchive(): Promise<ArchiveResult> {
       });
 
       archivedCount++;
-      console.log(`Archived tournament "${tournament.title}" (ID: ${tournament.id})`);
+      logger.info({ tournamentId: tournament.id, title: tournament.title }, 'Tournament archived');
     }
   }
 
-  console.log(`Archived: ${archivedCount}`);
+  logger.info({ archivedCount }, 'Auto-archive complete');
   return { message: 'Архивирование завершено', archived: archivedCount };
 }

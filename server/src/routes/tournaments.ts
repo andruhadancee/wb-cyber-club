@@ -7,7 +7,7 @@ import { parseIdFromQuery } from '../middleware/parseId';
 
 const router = Router();
 
-router.get('/', cacheMiddleware(30_000), async (req, res, next) => {
+router.get('/', cacheMiddleware(30), async (req, res, next) => {
   try {
     const status = req.query.status as string | undefined;
     const tournaments = await tournamentService.getAll(status);

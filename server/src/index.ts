@@ -9,8 +9,11 @@ import { config } from './config';
 import { devBasicAuth } from './middleware/auth';
 import { errorHandler } from './middleware/error-handler';
 import { apiLimiter, mutationLimiter } from './middleware/rate-limiter';
+import { httpLogger } from './middleware/http-logger';
 import apiRouter from './routes';
 import prisma from './prisma';
+import logger from './logger';
+import { connectRedis, disconnectRedis } from './redis';
 import { autoArchiveExpired } from './services/tournament.service';
 
 const app = express();
@@ -27,6 +30,9 @@ app.use(helmet({
   crossOriginResourcePolicy: isProd ? { policy: 'same-origin' } : false,
   originAgentCluster: isProd,
 }));
+
+// ── Request logging ──
+app.use(httpLogger);
 
 // ── Performance ──
 app.use(compression());
@@ -52,7 +58,7 @@ app.use('/api/', (req, res, next) => {
 // ── Basic Auth for dev ──
 if (config.DEV_AUTH === 'true') {
   app.use(devBasicAuth);
-  console.log(`[DEV] Basic Auth enabled (user: ${config.DEV_USER})`);
+  logger.info({ user: config.DEV_USER }, 'Basic Auth enabled');
 }
 
 // ── API routes ──
@@ -88,16 +94,16 @@ let archiveTimer: ReturnType<typeof setInterval> | null = null;
 
 function startAutoArchive(): void {
   autoArchiveExpired().catch((err) =>
-    console.error('[auto-archive] initial run error:', err),
+    logger.error({ err }, 'auto-archive initial run failed'),
   );
 
   archiveTimer = setInterval(() => {
     autoArchiveExpired().catch((err) =>
-      console.error('[auto-archive] error:', err),
+      logger.error({ err }, 'auto-archive tick failed'),
     );
   }, AUTO_ARCHIVE_INTERVAL_MS);
 
-  console.log(`[auto-archive] Scheduler started (every ${AUTO_ARCHIVE_INTERVAL_MS / 1000}s)`);
+  logger.info({ intervalSec: AUTO_ARCHIVE_INTERVAL_MS / 1000 }, 'Auto-archive scheduler started');
 }
 
 // ── Start ──
@@ -106,14 +112,16 @@ let server: Server;
 async function start(): Promise<void> {
   try {
     await prisma.$connect();
-    console.log('[DB] Connected');
+    logger.info('Database connected');
   } catch (error) {
-    console.error('[DB] Connection failed:', error);
+    logger.fatal({ err: error }, 'Database connection failed');
     process.exit(1);
   }
 
+  await connectRedis();
+
   server = app.listen(config.PORT, () => {
-    console.log(`Server running on http://localhost:${config.PORT} [${config.NODE_ENV}]`);
+    logger.info({ port: config.PORT, env: config.NODE_ENV }, 'Server started');
   });
 
   startAutoArchive();
@@ -121,22 +129,20 @@ async function start(): Promise<void> {
 
 // ── Graceful shutdown ──
 async function shutdown(signal: string): Promise<void> {
-  console.log(`[SHUTDOWN] ${signal} received`);
+  logger.info({ signal }, 'Shutdown initiated');
 
   if (archiveTimer) {
     clearInterval(archiveTimer);
     archiveTimer = null;
-    console.log('[SHUTDOWN] Auto-archive scheduler stopped');
   }
 
   if (server) {
-    server.close(() => {
-      console.log('[SHUTDOWN] HTTP server closed');
-    });
+    server.close(() => logger.info('HTTP server closed'));
   }
 
+  await disconnectRedis();
   await prisma.$disconnect();
-  console.log('[SHUTDOWN] DB disconnected');
+  logger.info('Shutdown complete');
   process.exit(0);
 }
 
