@@ -8,36 +8,35 @@ concurrency:
   group: deploy-dev
   cancel-in-progress: true
 
+env:
+  IMAGE: ghcr.io/${{ github.repository }}/app-dev
+
 jobs:
-  build:
+  build-push:
     runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - name: Log in to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build & push image
+        uses: docker/build-push-action@v5
         with:
-          node-version: 20
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci --registry=https://registry.npmjs.org/
-
-      - name: Generate Prisma client
-        run: npx prisma generate --schema=server/prisma/schema.prisma
-
-      - name: Typecheck
-        run: |
-          npx tsc --noEmit
-          npx tsc -p server/tsconfig.json --noEmit
-
-      - name: Build frontend
-        run: npx vite build
-
-      - name: Build backend
-        run: npx tsc -p server/tsconfig.json
+          context: .
+          push: true
+          tags: ${{ env.IMAGE }}:latest,${{ env.IMAGE }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
   deploy:
-    needs: build
+    needs: build-push
     runs-on: ubuntu-latest
     steps:
       - name: Deploy to server
@@ -46,39 +45,37 @@ jobs:
           host: ${{ secrets.SERVER_HOST }}
           username: root
           password: ${{ secrets.SERVER_PASSWORD }}
-          command_timeout: 30m
+          command_timeout: 10m
           script: |
             set -e
 
-            # Ensure DNS resolution works
+            # Ensure DNS
             if ! host github.com >/dev/null 2>&1; then
               grep -q "8.8.8.8" /etc/resolv.conf || echo "nameserver 8.8.8.8" >> /etc/resolv.conf
               grep -q "1.1.1.1" /etc/resolv.conf || echo "nameserver 1.1.1.1" >> /etc/resolv.conf
             fi
 
+            # Clone repo if first time (for compose file + prisma schema)
             if [ ! -d /opt/wb-cyber-club-dev ]; then
               git clone -b mvp-2 https://${{ secrets.GH_TOKEN }}@github.com/andruhadancee/wb-cyber-club.git /opt/wb-cyber-club-dev
             fi
 
             cd /opt/wb-cyber-club-dev
 
-            # Retry git fetch up to 3 times
             for i in 1 2 3; do
-              echo "Git fetch attempt $i..."
               git fetch origin mvp-2 && break
-              echo "Attempt $i failed, retrying in 10s..."
               sleep 10
             done
-
             git reset --hard origin/mvp-2
 
-            # Free disk space from old images
+            # Login to GHCR and pull the pre-built image
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            docker pull ghcr.io/${{ github.repository }}/app-dev:latest
+
+            # Restart with the new image (no --build!)
+            docker compose -f docker-compose.staging.yml up -d
             docker image prune -f
 
-            # Build with BuildKit cache
-            export DOCKER_BUILDKIT=1
-            export COMPOSE_DOCKER_CLI_BUILD=1
-            docker compose -f docker-compose.staging.yml up -d --build
             echo "Dev deploy completed at $(date)"
 
       - name: Verify deployment
