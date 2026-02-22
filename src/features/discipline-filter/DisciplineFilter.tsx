@@ -13,7 +13,7 @@ interface Props {
   availableDisciplines?: string[];
 }
 
-const CHIP_HEIGHT = 38;
+const CHIP_HEIGHT = 44;
 
 export const DisciplineFilter = memo(function DisciplineFilter({
   selected,
@@ -39,7 +39,7 @@ export const DisciplineFilter = memo(function DisciplineFilter({
         sx={{
           display: 'flex',
           flexWrap: 'wrap',
-          gap: 1.25,
+          gap: 1.5,
         }}
       >
         <Chip
@@ -48,10 +48,12 @@ export const DisciplineFilter = memo(function DisciplineFilter({
           onClick={handleSelectAll}
           sx={{
             height: CHIP_HEIGHT,
-            px: 1,
-            fontSize: '0.9rem',
+            px: 2.5,
+            minWidth: 80,
+            fontSize: '0.95rem',
             fontWeight: isAllActive ? 700 : 500,
             borderRadius: '10px',
+            borderWidth: 1.5,
             transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
             ...(isAllActive
               ? {
@@ -91,13 +93,13 @@ export const DisciplineFilter = memo(function DisciplineFilter({
               onClick={() => onSelect(name)}
               avatar={
                 iconUrl ? (
-                  <DisciplineAvatar src={iconUrl} alt={name} size={26} />
+                  <DisciplineAvatar src={iconUrl} alt={name} size={30} />
                 ) : undefined
               }
               sx={{
                 height: CHIP_HEIGHT,
-                px: 0.75,
-                fontSize: '0.9rem',
+                px: 1.25,
+                fontSize: '0.95rem',
                 borderRadius: '10px',
                 transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
                 fontWeight: isActive ? 700 : 500,
@@ -110,8 +112,8 @@ export const DisciplineFilter = memo(function DisciplineFilter({
                   background: `linear-gradient(135deg, ${alpha(color, 0.22)} 0%, ${alpha(color, 0.1)} 100%)`,
                 }),
                 '& .MuiChip-avatar': {
-                  width: 26,
-                  height: 26,
+                  width: 30,
+                  height: 30,
                   ml: 0.25,
                 },
                 '&:hover': {
