@@ -1,13 +1,14 @@
 import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import crypto from 'crypto';
 import path from 'path';
+import { config } from './config';
 import logger from './logger';
 
-const ENDPOINT = process.env.S3_ENDPOINT || '';
-const BUCKET = process.env.S3_BUCKET || '';
-const REGION = process.env.S3_REGION || 'ru-1';
-const ACCESS_KEY = process.env.S3_ACCESS_KEY || '';
-const SECRET_KEY = process.env.S3_SECRET_KEY || '';
+const ENDPOINT = config.S3_ENDPOINT;
+const BUCKET = config.S3_BUCKET;
+const REGION = config.S3_REGION;
+const ACCESS_KEY = config.S3_ACCESS_KEY;
+const SECRET_KEY = config.S3_SECRET_KEY;
 
 const enabled = !!(ENDPOINT && BUCKET && ACCESS_KEY && SECRET_KEY);
 

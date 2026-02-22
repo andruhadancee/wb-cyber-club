@@ -1,7 +1,8 @@
+import { config } from './config';
 import logger from './logger';
 
-const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const CHAT_ID = process.env.TELEGRAM_CHAT_ID;
+const BOT_TOKEN = config.TELEGRAM_BOT_TOKEN;
+const CHAT_ID = config.TELEGRAM_CHAT_ID;
 const MAX_MESSAGE_LENGTH = 4000;
 const THROTTLE_MS = 5_000;
 

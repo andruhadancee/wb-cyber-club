@@ -164,8 +164,15 @@ export const Header = memo(function Header() {
           </Box>
         )}
 
-        {/* Right: social links + mobile menu */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, minWidth: { md: 120 }, justifyContent: 'flex-end' }}>
+        {/* Social links */}
+        <Box sx={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 0.75,
+          minWidth: { md: 120 },
+          justifyContent: { xs: 'center', md: 'flex-end' },
+          flex: { xs: 1, md: 'none' },
+        }}>
           {links.telegram && (
             <SocialChip href={links.telegram} icon={<TelegramIcon sx={{ fontSize: 18 }} />} label="Telegram" color="#26A5E4" compact={isMobile} />
           )}
@@ -178,22 +185,22 @@ export const Header = memo(function Header() {
           {links.contact && (
             <SocialChip href={links.contact} icon={<EmailIcon sx={{ fontSize: 18 }} />} label="Связаться" color="#4CAF50" compact={isMobile} />
           )}
-
-          {/* Mobile menu button */}
-          {isMobile && (
-            <IconButton
-              onClick={handleDrawerToggle}
-              sx={{
-                color: 'text.primary',
-                ml: 0.5,
-                transition: 'transform 0.2s ease',
-                '&:hover': { transform: 'scale(1.1)' },
-              }}
-            >
-              <MenuIcon />
-            </IconButton>
-          )}
         </Box>
+
+        {/* Mobile menu button */}
+        {isMobile && (
+          <IconButton
+            onClick={handleDrawerToggle}
+            sx={{
+              color: 'text.primary',
+              flexShrink: 0,
+              transition: 'transform 0.2s ease',
+              '&:hover': { transform: 'scale(1.1)' },
+            }}
+          >
+            <MenuIcon />
+          </IconButton>
+        )}
       </Toolbar>
 
       {/* Mobile drawer */}

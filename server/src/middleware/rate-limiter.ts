@@ -2,9 +2,10 @@ import type { Request } from 'express';
 import rateLimit from 'express-rate-limit';
 import { RedisStore } from 'rate-limit-redis';
 import { getRedis } from '../redis';
+import { config } from '../config';
 import logger from '../logger';
 
-const isDev = process.env.NODE_ENV !== 'production';
+const isDev = config.NODE_ENV !== 'production';
 
 const keyGenerator = (req: Request): string =>
   (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ?? req.ip ?? 'unknown';

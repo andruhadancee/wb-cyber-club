@@ -8,7 +8,6 @@ import linksRouter from './links';
 import regulationsRouter from './regulations';
 import socialRouter from './social';
 import bracketsRouter from './brackets';
-import archiveRouter from './archive';
 import healthRouter from './health';
 import uploadRouter from './upload';
 import adminRouter from './admin';
@@ -25,7 +24,6 @@ router.use('/disciplines', disciplinesRouter);
 router.use('/links', linksRouter);
 router.use('/regulations', regulationsRouter);
 router.use('/social', socialRouter);
-router.use('/archive-auto', archiveRouter);
 router.use('/upload', uploadRouter);
 
 export default router;

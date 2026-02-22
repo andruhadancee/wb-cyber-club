@@ -20,6 +20,8 @@ async function handleUpload(
   return `${localPrefix}${req.file.filename}`;
 }
 
+const UPLOADS_DIR = path.resolve(process.cwd(), 'uploads');
+
 async function handleDelete(url: string, localPrefix: string): Promise<void> {
   if (isS3Enabled()) {
     await deleteFile(url);
@@ -27,7 +29,12 @@ async function handleDelete(url: string, localPrefix: string): Promise<void> {
   }
 
   if (!url.startsWith(localPrefix)) throw new Error('Некорректный путь файла');
-  const filePath = path.join(process.cwd(), url);
+
+  const filePath = path.resolve(process.cwd(), url);
+  if (!filePath.startsWith(UPLOADS_DIR)) {
+    throw new Error('Некорректный путь файла');
+  }
+
   if (fs.existsSync(filePath)) {
     fs.unlinkSync(filePath);
   }

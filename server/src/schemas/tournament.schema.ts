@@ -34,6 +34,7 @@ export const createTournamentSchema = z.object({
   date: z.string().min(1),
   prize: z.string().min(1),
   maxTeams: z.number().int().positive(),
+  registrationLink: safeUrl,
   customLink: safeUrl,
   status: z.string().default('active'),
   winner: z.string().nullish(),

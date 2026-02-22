@@ -1,7 +1,8 @@
 import Redis from 'ioredis';
+import { config } from './config';
 import logger from './logger';
 
-const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
+const REDIS_URL = config.REDIS_URL;
 
 let client: Redis | null = null;
 

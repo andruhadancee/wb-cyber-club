@@ -46,13 +46,24 @@ export async function cacheSet<T>(key: string, data: T, ttlSec = DEFAULT_TTL_SEC
   memStore.set(key, { data, expiresAt: Date.now() + ttlSec * 1000 });
 }
 
+async function scanAndDelete(pattern: string): Promise<void> {
+  const redis = getRedis();
+  const match = `${pattern}*`;
+  let cursor = '0';
+
+  do {
+    const [next, keys] = await redis.scan(cursor, 'MATCH', match, 'COUNT', 100);
+    cursor = next;
+    if (keys.length > 0) {
+      await redis.del(...keys);
+    }
+  } while (cursor !== '0');
+}
+
 export async function cacheInvalidate(pattern: string): Promise<void> {
   if (isRedisReady()) {
     try {
-      const keys = await getRedis().keys(`${pattern}*`);
-      if (keys.length > 0) {
-        await getRedis().del(...keys);
-      }
+      await scanAndDelete(pattern);
     } catch (err) {
       logger.debug({ err, pattern }, 'Redis cacheInvalidate failed');
     }
