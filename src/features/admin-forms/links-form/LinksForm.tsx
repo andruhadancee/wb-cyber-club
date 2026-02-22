@@ -8,6 +8,7 @@ import SaveIcon from '@mui/icons-material/Save';
 import { useDisciplineStore } from '@/entities/discipline/model';
 import { linksApi, type RegistrationLinks } from '@/shared/api/linksApi';
 import { getDisciplineIconUrl } from '@/shared/lib/discipline-icons';
+import { DisciplineAvatar } from '@/shared/ui/discipline-avatar/DisciplineAvatar';
 import { showSuccess, showError } from '@/shared/lib/toast';
 
 export function LinksForm() {
@@ -46,7 +47,7 @@ export function LinksForm() {
           return (
             <Box key={d.id} sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
               {iconUrl && (
-                <Box component="img" src={iconUrl} alt={d.name} sx={{ width: 24, height: 24, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+                <DisciplineAvatar src={iconUrl} alt={d.name} />
               )}
               <TextField
                 label={d.name}

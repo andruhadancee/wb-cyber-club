@@ -14,6 +14,7 @@ import TableRow from '@mui/material/TableRow';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import GroupsIcon from '@mui/icons-material/Groups';
 import { getDisciplineIconUrl } from '@/shared/lib/discipline-icons';
+import { DisciplineAvatar } from '@/shared/ui/discipline-avatar/DisciplineAvatar';
 import { staggerItem } from '@/shared/lib/animations';
 import type { Team } from '@/entities/team/types';
 
@@ -39,7 +40,7 @@ export const TeamSection = memo(function TeamSection({
       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
           {iconUrl && (
-            <Box component="img" src={iconUrl} alt={discipline} sx={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover' }} />
+            <DisciplineAvatar src={iconUrl} alt={discipline} size={32} />
           )}
           <Typography fontWeight={600}>{tournamentTitle}</Typography>
           <Chip label={discipline} variant="outlined" />

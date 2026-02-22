@@ -43,6 +43,7 @@ import InputAdornment from '@mui/material/InputAdornment';
 import SearchIcon from '@mui/icons-material/Search';
 import { normalizeTimeToHHmm, formatDateForDisplay } from '@/shared/lib/date';
 import { getDisciplineColor } from '@/shared/lib/discipline-colors';
+import { DisciplineAvatar } from '@/shared/ui/discipline-avatar/DisciplineAvatar';
 import { Modal } from '@/shared/ui/modal/Modal';
 import { showSuccess, showError } from '@/shared/lib/toast';
 import { showConfirm } from '@/shared/ui/confirm-dialog/ConfirmDialog';
@@ -639,15 +640,15 @@ export function AdminPanel() {
         </Button>
       </Box>
       <Stack spacing={1}>
+        {disciplineStore.disciplines.length === 0 && (
+          <Typography variant="body2" color="text.secondary" sx={{ py: 2, textAlign: 'center' }}>
+            Нет дисциплин. Добавьте первую дисциплину выше.
+          </Typography>
+        )}
         {disciplineStore.disciplines.map((d) => (
           <Paper key={d.id} variant="outlined" sx={{ p: 1.5, display: 'flex', alignItems: 'center', gap: 1.5 }}>
             {d.logo_url ? (
-              <Box
-                component="img"
-                src={d.logo_url}
-                alt={d.name}
-                sx={{ width: 40, height: 40, borderRadius: 0.5, objectFit: 'contain', flexShrink: 0 }}
-              />
+              <DisciplineAvatar src={d.logo_url} alt={d.name} size={40} sx={{ borderRadius: 0.5 }} />
             ) : (
               <Box sx={{ width: 40, height: 40, borderRadius: 0.5, bgcolor: d.color || '#8b5abf', flexShrink: 0 }} />
             )}

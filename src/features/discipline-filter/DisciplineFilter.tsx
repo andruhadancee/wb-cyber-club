@@ -5,6 +5,7 @@ import { alpha, useTheme } from '@mui/material/styles';
 import { useDisciplineStore } from '@/entities/discipline/model';
 import { getDisciplineIconUrl } from '@/shared/lib/discipline-icons';
 import { getDisciplineColor } from '@/shared/lib/discipline-colors';
+import { DisciplineAvatar } from '@/shared/ui/discipline-avatar/DisciplineAvatar';
 
 interface Props {
   selected: string;
@@ -57,12 +58,7 @@ export const DisciplineFilter = memo(function DisciplineFilter({
               onClick={() => onSelect(name)}
               avatar={
                 iconUrl ? (
-                  <Box
-                    component="img"
-                    src={iconUrl}
-                    alt={name}
-                    sx={{ width: 24, height: 24, borderRadius: '50%', objectFit: 'cover' }}
-                  />
+                  <DisciplineAvatar src={iconUrl} alt={name} />
                 ) : undefined
               }
               sx={{

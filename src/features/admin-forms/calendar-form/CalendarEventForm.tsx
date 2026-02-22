@@ -109,7 +109,7 @@ export function CalendarEventForm({ event, defaultDate, onSubmit, onCancel, onDi
               select
               label="Дисциплина"
             >
-              <MenuItem value="">Без дисциплины</MenuItem>
+              <MenuItem value="">{disciplines.length === 0 ? 'Сначала создайте дисциплину' : 'Без дисциплины'}</MenuItem>
               {disciplines.map((d) => (
                 <MenuItem key={d.id} value={d.id}>{d.name}</MenuItem>
               ))}

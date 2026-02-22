@@ -148,7 +148,7 @@ export function TournamentForm({ tournament, isPast = false, onSubmit, onCancel,
               error={!!errors.disciplineId}
               helperText={errors.disciplineId?.message}
             >
-              <MenuItem value="">Выберите</MenuItem>
+              <MenuItem value="">{disciplines.length === 0 ? 'Сначала создайте дисциплину' : 'Выберите'}</MenuItem>
               {disciplines.map((d) => (
                 <MenuItem key={d.id} value={d.id}>{d.name}</MenuItem>
               ))}

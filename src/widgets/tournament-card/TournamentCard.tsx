@@ -2,6 +2,8 @@ import { memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
+import { AppImage } from '@/shared/ui/app-image/AppImage';
+import { DisciplineAvatar } from '@/shared/ui/discipline-avatar/DisciplineAvatar';
 import Typography from '@mui/material/Typography';
 import Chip from '@mui/material/Chip';
 import Box from '@mui/material/Box';
@@ -38,8 +40,13 @@ export const TournamentCard = memo(function TournamentCard({ tournament, regLink
     navigate(`/tournament/${tournament.id}/bracket`);
   };
 
+  const imageUrl = tournament.image_url?.trim() || null;
+
   return (
     <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column', ...staggerItem(index) }}>
+      {imageUrl && (
+        <AppImage src={imageUrl} alt={tournament.title} height={160} />
+      )}
       <CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column', p: 2.5 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
           <Chip
@@ -47,7 +54,7 @@ export const TournamentCard = memo(function TournamentCard({ tournament, regLink
             variant="outlined"
             avatar={
               iconUrl ? (
-                <Box component="img" src={iconUrl} alt={tournament.discipline} sx={{ width: 24, height: 24, borderRadius: '50%', objectFit: 'cover' }} />
+                <DisciplineAvatar src={iconUrl} alt={tournament.discipline} />
               ) : undefined
             }
             sx={{

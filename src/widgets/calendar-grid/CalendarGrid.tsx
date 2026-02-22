@@ -25,6 +25,8 @@ import { getDisciplineIconUrl } from '@/shared/lib/discipline-icons';
 import { formatLocalDate, normalizeTimeToHHmm } from '@/shared/lib/date';
 import { useInterval } from '@/shared/hooks/useInterval';
 import { Modal } from '@/shared/ui/modal/Modal';
+import { AppImage } from '@/shared/ui/app-image/AppImage';
+import { DisciplineAvatar } from '@/shared/ui/discipline-avatar/DisciplineAvatar';
 import type { CalendarEvent } from '@/entities/calendar-event/types';
 import type { Discipline } from '@/entities/discipline/types';
 
@@ -344,17 +346,14 @@ export const CalendarGrid = memo(function CalendarGrid({
                     {hasEvents && disciplineInfo.slice(0, 3).map((di) => (
                       di.iconUrl ? (
                         <Tooltip key={di.name} title={di.name} arrow placement="top">
-                          <Box
-                            component="img"
+                          <DisciplineAvatar
                             src={di.iconUrl}
                             alt={di.name}
+                            size={18}
                             sx={{
                               width: { xs: 14, md: 18 },
                               height: { xs: 14, md: 18 },
-                              borderRadius: '50%',
                               border: `1.5px solid ${alpha(di.color, 0.5)}`,
-                              objectFit: 'cover',
-                              flexShrink: 0,
                             }}
                           />
                         </Tooltip>
@@ -420,18 +419,7 @@ export const CalendarGrid = memo(function CalendarGrid({
                           }}
                         >
                           {evIconUrl && (
-                            <Box
-                              component="img"
-                              src={evIconUrl}
-                              alt={e.discipline ?? ''}
-                              sx={{
-                                width: 12,
-                                height: 12,
-                                borderRadius: '50%',
-                                objectFit: 'cover',
-                                flexShrink: 0,
-                              }}
-                            />
+                            <DisciplineAvatar src={evIconUrl} alt={e.discipline ?? ''} size={12} />
                           )}
                           <Typography
                             variant="caption"
@@ -568,17 +556,12 @@ export const CalendarGrid = memo(function CalendarGrid({
                     )}
 
                     {e.image_url && (
-                      <Box
-                        component="img"
+                      <AppImage
                         src={e.image_url}
                         alt={e.title}
-                        sx={{
-                          width: '100%',
-                          borderRadius: 1.5,
-                          mb: 2,
-                          maxHeight: 200,
-                          objectFit: 'cover',
-                        }}
+                        height={200}
+                        borderRadius={1.5}
+                        sx={{ mb: 2 }}
                       />
                     )}
 
@@ -601,12 +584,7 @@ export const CalendarGrid = memo(function CalendarGrid({
                           variant="outlined"
                           avatar={
                             iconUrl ? (
-                              <Box
-                                component="img"
-                                src={iconUrl}
-                                alt={e.discipline}
-                                sx={{ width: 22, height: 22, borderRadius: '50%', objectFit: 'cover' }}
-                              />
+                              <DisciplineAvatar src={iconUrl} alt={e.discipline} size={22} />
                             ) : undefined
                           }
                           sx={{ borderColor: alpha(evColor, 0.3) }}

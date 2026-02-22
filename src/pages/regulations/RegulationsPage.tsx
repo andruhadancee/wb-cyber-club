@@ -11,6 +11,7 @@ import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import { useRegulationStore } from '@/entities/regulation/model';
 import { useDisciplineStore } from '@/entities/discipline/model';
 import { getDisciplineIconUrl } from '@/shared/lib/discipline-icons';
+import { DisciplineAvatar } from '@/shared/ui/discipline-avatar/DisciplineAvatar';
 import { Loader } from '@/shared/ui/loader/Loader';
 import { pageEntrance, staggerItem } from '@/shared/lib/animations';
 
@@ -56,12 +57,7 @@ export function RegulationsPage() {
                     }}
                   >
                     {iconUrl ? (
-                      <Box
-                        component="img"
-                        src={iconUrl}
-                        alt={reg.discipline_name}
-                        sx={{ width: 56, height: 56, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
-                      />
+                      <DisciplineAvatar src={iconUrl} alt={reg.discipline_name} size={56} />
                     ) : (
                       <PictureAsPdfIcon sx={{ fontSize: 56, color: 'error.main', flexShrink: 0 }} />
                     )}

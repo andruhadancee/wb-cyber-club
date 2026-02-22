@@ -5,7 +5,8 @@ import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
-import CardMedia from '@mui/material/CardMedia';
+import { AppImage } from '@/shared/ui/app-image/AppImage';
+import { DisciplineAvatar } from '@/shared/ui/discipline-avatar/DisciplineAvatar';
 import Chip from '@mui/material/Chip';
 import Button from '@mui/material/Button';
 import Stack from '@mui/material/Stack';
@@ -74,12 +75,7 @@ const ArchiveCard = memo(function ArchiveCard({ tournament, index = 0 }: { tourn
   return (
     <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column', ...staggerItem(index) }}>
       {imageUrl && (
-        <CardMedia
-          component="img"
-          image={imageUrl}
-          alt={tournament.title}
-          sx={{ height: 160, objectFit: 'cover' }}
-        />
+        <AppImage src={imageUrl} alt={tournament.title} height={160} />
       )}
       <CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column', p: 2.5 }}>
         <Chip
@@ -87,7 +83,7 @@ const ArchiveCard = memo(function ArchiveCard({ tournament, index = 0 }: { tourn
           variant="outlined"
           avatar={
             iconUrl ? (
-              <Box component="img" src={iconUrl} alt={tournament.discipline} sx={{ width: 24, height: 24, borderRadius: '50%', objectFit: 'cover' }} />
+              <DisciplineAvatar src={iconUrl} alt={tournament.discipline} />
             ) : undefined
           }
           sx={{
