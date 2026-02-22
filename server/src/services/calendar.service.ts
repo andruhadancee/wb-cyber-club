@@ -114,11 +114,13 @@ export async function create(data: CreateCalendarEventInput) {
         date: data.eventDate,
         prize: data.prize,
         max_teams: data.maxTeams,
-        custom_link: data.customLink || data.registrationLink || null,
+        registration_link: data.registrationLink || null,
+        custom_link: data.customLink || null,
         status: 'active',
         teams: 0,
         watch_url: data.watchUrl || null,
         start_time: parseStartTime(data.startTime),
+        image_url: data.imageUrl || null,
       },
     });
     tournamentId = created.id;
