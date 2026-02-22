@@ -48,10 +48,12 @@ jobs:
           password: ${{ secrets.SERVER_PASSWORD }}
           command_timeout: 30m
           script: |
+            set -e
+
             # Ensure DNS resolution works
             if ! host github.com >/dev/null 2>&1; then
-              echo "nameserver 8.8.8.8" >> /etc/resolv.conf
-              echo "nameserver 1.1.1.1" >> /etc/resolv.conf
+              grep -q "8.8.8.8" /etc/resolv.conf || echo "nameserver 8.8.8.8" >> /etc/resolv.conf
+              grep -q "1.1.1.1" /etc/resolv.conf || echo "nameserver 1.1.1.1" >> /etc/resolv.conf
             fi
 
             if [ ! -d /opt/wb-cyber-club-dev ]; then
@@ -59,8 +61,23 @@ jobs:
             fi
 
             cd /opt/wb-cyber-club-dev
-            git fetch origin mvp-2
+
+            # Retry git fetch up to 3 times
+            for i in 1 2 3; do
+              echo "Git fetch attempt $i..."
+              git fetch origin mvp-2 && break
+              echo "Attempt $i failed, retrying in 10s..."
+              sleep 10
+            done
+
             git reset --hard origin/mvp-2
+
+            # Free disk space from old images
+            docker image prune -f
+
+            # Build with BuildKit cache
+            export DOCKER_BUILDKIT=1
+            export COMPOSE_DOCKER_CLI_BUILD=1
             docker compose -f docker-compose.staging.yml up -d --build
             echo "Dev deploy completed at $(date)"
 

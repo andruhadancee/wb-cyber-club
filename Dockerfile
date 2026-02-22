@@ -1,20 +1,21 @@
-# Stage 1: Build frontend + backend (runs on CI, fast runner)
+# syntax=docker/dockerfile:1
+
+# Stage 1: Build frontend + backend
 FROM node:20-alpine AS build
 
 WORKDIR /app
 
 COPY package.json package-lock.json* ./
 COPY shared/package.json ./shared/
-RUN npm ci --registry=https://registry.npmjs.org/
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --registry=https://registry.npmjs.org/
 
 COPY . .
 
 RUN npx prisma generate --schema=server/prisma/schema.prisma
 
-# Increase memory for Vite on low-RAM machines
 ENV NODE_OPTIONS="--max-old-space-size=1024"
 RUN npx vite build
-
 RUN npx tsc -p server/tsconfig.json && echo '{"type":"commonjs"}' > server/dist/package.json
 
 # Stage 2: Production (lightweight)
@@ -24,7 +25,8 @@ WORKDIR /app
 
 COPY package.json package-lock.json* ./
 COPY shared/package.json ./shared/
-RUN npm ci --omit=dev --registry=https://registry.npmjs.org/
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --omit=dev --registry=https://registry.npmjs.org/
 
 COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=build /app/node_modules/@prisma ./node_modules/@prisma
