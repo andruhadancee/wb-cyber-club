@@ -8,8 +8,8 @@ const envSchema = z.object({
   DOMAIN: z.string().optional(),
   DEV_AUTH: z.string().optional(),
   DEV_USER: z.string().default('admin'),
-  DEV_PASS: z.string().min(1, 'DEV_PASS is required when DEV_AUTH=true').default(''),
-  ADMIN_PASSWORD: z.string().min(1, 'ADMIN_PASSWORD is required').default(''),
+  DEV_PASS: z.string().default(''),
+  ADMIN_PASSWORD: z.string().default(''),
   REDIS_URL: z.string().default('redis://localhost:6379'),
 
   S3_ENDPOINT: z.string().default(''),

@@ -9,8 +9,11 @@ let client: Redis | null = null;
 export function getRedis(): Redis {
   if (!client) {
     client = new Redis(REDIS_URL, {
-      maxRetriesPerRequest: 3,
-      retryStrategy: (times) => Math.min(times * 200, 3000),
+      maxRetriesPerRequest: null,
+      retryStrategy: (times) => {
+        if (times > 5) return null;
+        return Math.min(times * 500, 3000);
+      },
       lazyConnect: true,
     });
 

@@ -170,8 +170,7 @@ export const Header = memo(function Header() {
           alignItems: 'center',
           gap: 0.75,
           minWidth: { md: 120 },
-          justifyContent: { xs: 'center', md: 'flex-end' },
-          flex: { xs: 1, md: 'none' },
+          justifyContent: 'flex-end',
         }}>
           {links.telegram && (
             <SocialChip href={links.telegram} icon={<TelegramIcon sx={{ fontSize: 18 }} />} label="Telegram" color="#26A5E4" compact={isMobile} />
@@ -193,7 +192,7 @@ export const Header = memo(function Header() {
             onClick={handleDrawerToggle}
             sx={{
               color: 'text.primary',
-              flexShrink: 0,
+              ml: 0.5,
               transition: 'transform 0.2s ease',
               '&:hover': { transform: 'scale(1.1)' },
             }}
@@ -317,6 +316,12 @@ function SocialChip({ href, icon, label, color, compact, fullWidth }: SocialChip
           bgcolor: alpha(color, 0.08),
           transform: 'translateY(-1px)',
         },
+        ...(compact && {
+          '& .MuiChip-icon': { color: 'inherit', m: 0 },
+          '& .MuiChip-label': { display: 'none' },
+          justifyContent: 'center',
+          px: 1,
+        }),
         ...(fullWidth && { width: '100%' }),
       }}
     />
