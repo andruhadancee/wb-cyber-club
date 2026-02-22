@@ -5,7 +5,7 @@
 services:
   # ── App ──
   app-dev:
-    image: ghcr.io/andruhadancee/wb-cyber-club/app-dev:latest
+    image: wb-cyber-club-dev:latest
     ports:
       - "3001:3000"
     environment:
