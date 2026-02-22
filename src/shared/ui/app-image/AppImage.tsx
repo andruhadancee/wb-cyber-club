@@ -7,10 +7,10 @@ import type { SxProps, Theme } from '@mui/material/styles';
 interface Props {
   src: string;
   alt: string;
-  /** Fixed height or 'auto'. Default 160 */
-  height?: number | string;
-  /** Object-fit mode. Default 'cover' */
-  objectFit?: 'cover' | 'contain' | 'fill';
+  /** Max height limit for very tall images. Default 280 */
+  maxHeight?: number | string;
+  /** Min height for skeleton placeholder. Default 120 */
+  minHeight?: number | string;
   /** Border-radius in MUI spacing units. Default 0 */
   borderRadius?: number | string;
   sx?: SxProps<Theme>;
@@ -19,8 +19,8 @@ interface Props {
 export function AppImage({
   src,
   alt,
-  height = 180,
-  objectFit = 'contain',
+  maxHeight = 280,
+  minHeight = 120,
   borderRadius = 0,
   sx,
 }: Props) {
@@ -33,7 +33,7 @@ export function AppImage({
     return (
       <Box
         sx={{
-          height,
+          height: minHeight,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -48,12 +48,12 @@ export function AppImage({
   }
 
   return (
-    <Box sx={{ position: 'relative', borderRadius, overflow: 'hidden', bgcolor: 'rgba(0,0,0,0.3)', ...sx }}>
+    <Box sx={{ position: 'relative', borderRadius, overflow: 'hidden', ...sx }}>
       {status === 'loading' && (
         <Skeleton
           variant="rectangular"
           animation="wave"
-          sx={{ position: 'absolute', inset: 0, height, borderRadius }}
+          sx={{ width: '100%', height: minHeight, borderRadius }}
         />
       )}
       <Box
@@ -64,9 +64,10 @@ export function AppImage({
         onError={handleError}
         sx={{
           width: '100%',
-          height,
-          objectFit,
-          display: 'block',
+          height: 'auto',
+          maxHeight,
+          objectFit: 'cover',
+          display: status === 'loading' ? 'none' : 'block',
           opacity: status === 'loaded' ? 1 : 0,
           transition: 'opacity 0.3s ease',
         }}

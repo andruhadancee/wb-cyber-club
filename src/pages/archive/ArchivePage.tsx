@@ -75,7 +75,7 @@ const ArchiveCard = memo(function ArchiveCard({ tournament, index = 0 }: { tourn
   return (
     <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', ...staggerItem(index) }}>
       {imageUrl && (
-        <AppImage src={imageUrl} alt={tournament.title} height={180} />
+        <AppImage src={imageUrl} alt={tournament.title} />
       )}
       <CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column', p: 2.5 }}>
         <Chip
