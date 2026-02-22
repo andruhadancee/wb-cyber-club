@@ -1,16 +1,8 @@
 import { apiGet, apiPost, apiPut, apiDelete } from '@/shared/api';
+import { API_BASE_URL } from '@/shared/api/config';
 import type { Discipline } from '../types';
 
-const FALLBACK_DISCIPLINES: Discipline[] = [
-  'CS 2', 'Dota 2', 'Valorant', 'Overwatch 2', 'League of Legends',
-].map((name, i) => ({
-  id: i + 1,
-  name,
-  color: null,
-  logo_url: null,
-  created_at: '',
-  updated_at: '',
-}));
+const EMPTY_DISCIPLINES: Discipline[] = [];
 
 export const disciplineApi = {
   async getAll(): Promise<Discipline[]> {
@@ -19,9 +11,9 @@ export const disciplineApi = {
       if (Array.isArray(data) && data.length > 0 && typeof data[0] === 'object') {
         return data;
       }
-      return FALLBACK_DISCIPLINES;
+      return EMPTY_DISCIPLINES;
     } catch {
-      return FALLBACK_DISCIPLINES;
+      return EMPTY_DISCIPLINES;
     }
   },
 
@@ -29,11 +21,39 @@ export const disciplineApi = {
     return apiPost<Discipline>('/api/disciplines', { name, color: color || null, logo_url: logoUrl || null });
   },
 
-  async update(id: number, data: Partial<Pick<Discipline, 'name' | 'color'>>): Promise<Discipline> {
+  async update(id: number, data: Partial<Pick<Discipline, 'name' | 'color' | 'logo_url'>>): Promise<Discipline> {
     return apiPut<Discipline>('/api/disciplines', { id, ...data });
   },
 
-  async remove(name: string): Promise<void> {
-    await apiDelete(`/api/disciplines?name=${encodeURIComponent(name)}`);
+  async remove(id: number): Promise<void> {
+    await apiDelete(`/api/disciplines?id=${id}`);
+  },
+
+  async uploadLogo(file: File): Promise<string> {
+    const formData = new FormData();
+    formData.append('logo', file);
+
+    const response = await fetch(`${API_BASE_URL}/api/upload/discipline-logo`, {
+      method: 'POST',
+      credentials: 'include',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error((err as { error?: string }).error || 'Ошибка загрузки файла');
+    }
+
+    const result = await response.json() as { url: string };
+    return result.url;
+  },
+
+  async deleteLogo(url: string): Promise<void> {
+    await fetch(`${API_BASE_URL}/api/upload/discipline-logo`, {
+      method: 'DELETE',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url }),
+    });
   },
 };

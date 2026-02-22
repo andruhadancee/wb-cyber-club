@@ -18,8 +18,9 @@
     "forceConsistentCasingInFileNames": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      "@shared/*": ["shared/src/*"]
     }
   },
-  "include": ["src", "vite-env.d.ts"]
+  "include": ["src", "shared/src", "vite-env.d.ts"]
 }

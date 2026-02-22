@@ -1,34 +1,43 @@
-const RUSSIAN_MONTHS: Record<string, number> = {
-  января: 0,
-  февраля: 1,
-  марта: 2,
-  апреля: 3,
-  мая: 4,
-  июня: 5,
-  июля: 6,
-  августа: 7,
-  сентября: 8,
-  октября: 9,
-  ноября: 10,
-  декабря: 11,
-};
+import dayjs from 'dayjs';
+import customParseFormat from 'dayjs/plugin/customParseFormat';
+import utc from 'dayjs/plugin/utc';
+import 'dayjs/locale/ru';
 
-const MONTH_NAMES = [
-  'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
-  'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря',
+dayjs.extend(customParseFormat);
+dayjs.extend(utc);
+dayjs.locale('ru');
+
+const RUSSIAN_DATE_FORMATS = [
+  'D MMMM YYYY г.',
+  'D MMMM YYYY',
 ];
+
+const ALL_DATE_FORMATS = [
+  'YYYY-MM-DD',
+  'DD.MM.YYYY',
+  ...RUSSIAN_DATE_FORMATS,
+];
+
+/**
+ * Normalize time value to "HH:mm" format.
+ * Accepts "HH:mm", ISO string ("1970-01-01T18:00:00.000Z"), or null/undefined.
+ */
+export function normalizeTimeToHHmm(value: string | null | undefined): string {
+  if (!value) return '';
+  const trimmed = value.trim();
+  if (/^\d{1,2}:\d{2}$/.test(trimmed)) return trimmed;
+  const parsed = dayjs.utc(trimmed);
+  if (parsed.isValid()) return parsed.format('HH:mm');
+  return '';
+}
 
 /** Форматирует дату для отображения: "12 февраля 2025 г." */
 export function formatDateForDisplay(dateStr: string): string {
   try {
-    if (dateStr.match(/\d+\s+\w+\s+\d+/)) return dateStr;
-
-    const parts = dateStr.match(/(\d{4})-(\d{2})-(\d{2})/);
-    if (parts) {
-      const [, year, month, day] = parts;
-      return `${parseInt(day)} ${MONTH_NAMES[parseInt(month) - 1]} ${year} г.`;
-    }
-
+    const parsed = dayjs(dateStr, ALL_DATE_FORMATS, 'ru', true);
+    if (parsed.isValid()) return parsed.locale('ru').format('D MMMM YYYY г.');
+    const fallback = dayjs(dateStr);
+    if (fallback.isValid()) return fallback.locale('ru').format('D MMMM YYYY г.');
     return dateStr;
   } catch {
     return dateStr;
@@ -41,39 +50,25 @@ export function parseTournamentDateTime(
   timeStr: string,
 ): Date | null {
   try {
-    let day: number, month: number, year: number;
-
-    const dotsFormat = dateStr.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
-    const dashesFormat = dateStr.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
-    const russianFormat = dateStr.match(/(\d{1,2})\s+(\w+)\s+(\d{4})(?:\s+г\.)?/);
-
-    if (dotsFormat) {
-      day = parseInt(dotsFormat[1]);
-      month = parseInt(dotsFormat[2]) - 1;
-      year = parseInt(dotsFormat[3]);
-    } else if (dashesFormat) {
-      year = parseInt(dashesFormat[1]);
-      month = parseInt(dashesFormat[2]) - 1;
-      day = parseInt(dashesFormat[3]);
-    } else if (russianFormat) {
-      day = parseInt(russianFormat[1]);
-      month = RUSSIAN_MONTHS[russianFormat[2].toLowerCase()];
-      year = parseInt(russianFormat[3]);
-    } else {
-      return null;
-    }
-
-    if (month === undefined || isNaN(year) || isNaN(month) || isNaN(day)) {
-      return null;
-    }
-
-    const timeMatch = timeStr.match(/(\d{1,2}):(\d{2})(?::\d{2})?/);
+    const timeMatch = timeStr.match(/(\d{1,2}):(\d{2})/);
     if (!timeMatch) return null;
 
-    const hours = parseInt(timeMatch[1]);
-    const minutes = parseInt(timeMatch[2]);
+    const dateParsed = dayjs(dateStr, ALL_DATE_FORMATS, 'ru', true);
+    if (!dateParsed.isValid()) {
+      const fallback = dayjs(dateStr);
+      if (!fallback.isValid()) return null;
+      return fallback
+        .hour(parseInt(timeMatch[1]))
+        .minute(parseInt(timeMatch[2]))
+        .second(0)
+        .toDate();
+    }
 
-    return new Date(year, month, day, hours, minutes, 0);
+    return dateParsed
+      .hour(parseInt(timeMatch[1]))
+      .minute(parseInt(timeMatch[2]))
+      .second(0)
+      .toDate();
   } catch {
     return null;
   }
@@ -82,33 +77,11 @@ export function parseTournamentDateTime(
 /** Парсит строку даты (различные форматы) в объект Date */
 export function parseTournamentDate(dateStr: string): Date | null {
   try {
-    let day: number, month: number, year: number;
+    const parsed = dayjs(dateStr, ALL_DATE_FORMATS, 'ru', true);
+    if (parsed.isValid()) return parsed.toDate();
 
-    const dots = dateStr.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
-    const dashes = dateStr.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
-    const rus = dateStr.match(/(\d{1,2})\s+(\w+)\s+(\d{4})(?:\s+г\.)?/i);
-
-    if (dots) {
-      day = parseInt(dots[1]);
-      month = parseInt(dots[2]) - 1;
-      year = parseInt(dots[3]);
-    } else if (dashes) {
-      year = parseInt(dashes[1]);
-      month = parseInt(dashes[2]) - 1;
-      day = parseInt(dashes[3]);
-    } else if (rus) {
-      day = parseInt(rus[1]);
-      month = RUSSIAN_MONTHS[rus[2].toLowerCase()];
-      year = parseInt(rus[3]);
-    } else {
-      const d = new Date(dateStr);
-      return isNaN(d.getTime()) ? null : d;
-    }
-
-    if (month === undefined || isNaN(year) || isNaN(month) || isNaN(day)) {
-      return null;
-    }
-    return new Date(year, month, day);
+    const fallback = dayjs(dateStr);
+    return fallback.isValid() ? fallback.toDate() : null;
   } catch {
     return null;
   }
@@ -116,17 +89,12 @@ export function parseTournamentDate(dateStr: string): Date | null {
 
 /** Форматирует Date в YYYY-MM-DD */
 export function formatDateISO(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  return dayjs(date).format('YYYY-MM-DD');
 }
 
 /** Форматирует YYYY-MM для API календаря */
 export function formatMonth(date: Date): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  return `${y}-${m}`;
+  return dayjs(date).format('YYYY-MM');
 }
 
 /** Форматирует YYYY-MM-DD из компонентов */
@@ -135,5 +103,5 @@ export function formatLocalDate(
   month: number,
   day: number,
 ): string {
-  return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  return dayjs(new Date(year, month, day)).format('YYYY-MM-DD');
 }

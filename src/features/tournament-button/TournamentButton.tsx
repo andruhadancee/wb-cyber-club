@@ -1,6 +1,10 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, memo } from 'react';
+import Button from '@mui/material/Button';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import HowToRegIcon from '@mui/icons-material/HowToReg';
 import { useInterval } from '@/shared/hooks/useInterval';
-import { parseTournamentDateTime } from '@/shared/lib/date';
+import { parseTournamentDateTime, normalizeTimeToHHmm } from '@/shared/lib/date';
+import { showWarning } from '@/shared/lib/toast';
 
 interface Props {
   date: string;
@@ -11,53 +15,71 @@ interface Props {
 
 const DEFAULT_WATCH_URL = 'https://www.twitch.tv/wbteamcyberclub';
 
-export function TournamentButton({ date, startTime, regLink, watchUrl }: Props) {
+export const TournamentButton = memo(function TournamentButton({
+  date,
+  startTime,
+  regLink,
+  watchUrl,
+}: Props) {
   const getState = useCallback(() => {
     if (!startTime) return 'register' as const;
-    const dt = parseTournamentDateTime(date, startTime);
+    const dt = parseTournamentDateTime(date, normalizeTimeToHHmm(startTime));
     if (!dt) return 'register' as const;
-    return Date.now() >= dt.getTime() ? ('watch' as const) : ('register' as const);
+    return Date.now() >= dt.getTime() ? 'watch' : 'register';
   }, [date, startTime]);
 
   const [state, setState] = useState(getState);
-
-  useInterval(() => {
-    setState(getState());
-  }, 60000);
+  useInterval(() => setState(getState()), 60000);
 
   if (state === 'watch') {
-    const finalUrl = (watchUrl && watchUrl.trim()) || DEFAULT_WATCH_URL;
+    const finalUrl = watchUrl?.trim() || DEFAULT_WATCH_URL;
     return (
-      <a
+      <Button
+        variant="contained"
+        color="success"
+        startIcon={<PlayArrowIcon />}
         href={finalUrl}
         target="_blank"
         rel="noopener noreferrer"
-        className="btn-submit"
-        style={{ background: 'linear-gradient(90deg, #10b981 0%, #059669 100%)' }}
+        fullWidth
+        sx={{ mt: 2 }}
       >
         Смотреть турнир
-      </a>
+      </Button>
     );
   }
 
+  const handleNoLink = () => {
+    showWarning('Ссылка на регистрацию не настроена');
+  };
+
   if (regLink === '#') {
     return (
-      <a
-        href="#"
-        className="btn-submit"
-        onClick={(e) => {
-          e.preventDefault();
-          alert('Ссылка на регистрацию не настроена в админке');
-        }}
+      <Button
+        variant="contained"
+        color="primary"
+        startIcon={<HowToRegIcon />}
+        onClick={handleNoLink}
+        fullWidth
+        sx={{ mt: 2 }}
       >
         Подать заявку
-      </a>
+      </Button>
     );
   }
 
   return (
-    <a href={regLink} target="_blank" rel="noopener noreferrer" className="btn-submit">
+    <Button
+      variant="contained"
+      color="primary"
+      startIcon={<HowToRegIcon />}
+      href={regLink}
+      target="_blank"
+      rel="noopener noreferrer"
+      fullWidth
+      sx={{ mt: 2 }}
+    >
       Подать заявку
-    </a>
+    </Button>
   );
-}
+});

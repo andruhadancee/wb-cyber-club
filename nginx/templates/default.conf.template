@@ -1,3 +1,13 @@
+# ── Upstream с keepalive ──
+upstream app_backend {
+    server app:3000;
+    keepalive 16;
+}
+
+# ── API proxy cache zone ──
+proxy_cache_path /var/cache/nginx/api levels=1:2 keys_zone=api_cache:10m
+                 max_size=50m inactive=5m use_temp_path=off;
+
 # HTTP → HTTPS redirect + ACME challenge
 server {
     listen 80;
@@ -36,10 +46,18 @@ server {
     add_header X-XSS-Protection "1; mode=block" always;
     add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
 
+    # ── Performance ──
+    sendfile        on;
+    tcp_nopush      on;
+    tcp_nodelay     on;
+    client_max_body_size 10m;
+
     # Gzip compression
     gzip on;
     gzip_vary on;
+    gzip_comp_level 5;
     gzip_min_length 1024;
+    gzip_proxied any;
     gzip_types
         text/plain
         text/css
@@ -47,37 +65,92 @@ server {
         application/json
         application/javascript
         application/xml
-        image/svg+xml;
+        image/svg+xml
+        font/woff2;
 
-    # Proxy to Express app
-    location / {
-        proxy_pass http://app:3000;
+    # ── API routes (with short proxy cache) ──
+    location /api/ {
+        proxy_pass http://app_backend;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
+        proxy_set_header Connection "";
+
+        # Proxy buffering
+        proxy_buffering on;
+        proxy_buffer_size 8k;
+        proxy_buffers 8 16k;
+
+        # Cache GET requests for 30s (thundering herd + performance)
+        proxy_cache api_cache;
+        proxy_cache_valid 200 30s;
+        proxy_cache_methods GET HEAD;
+        proxy_cache_key "$request_method$request_uri";
+        proxy_cache_use_stale error timeout updating http_500 http_502 http_503;
+        proxy_cache_lock on;
+        add_header X-Cache-Status $upstream_cache_status;
+
+        # Bypass cache for mutations
+        proxy_cache_bypass $request_method;
 
         # Timeouts
-        proxy_connect_timeout 60s;
-        proxy_send_timeout 60s;
-        proxy_read_timeout 60s;
+        proxy_connect_timeout 30s;
+        proxy_send_timeout 30s;
+        proxy_read_timeout 30s;
     }
 
-    # Cache static assets (Vite hashed filenames)
-    location /assets/ {
-        proxy_pass http://app:3000;
+    # ── Health check (no cache) ──
+    location = /api/health {
+        proxy_pass http://app_backend;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+        proxy_cache off;
+    }
+
+    # ── SPA fallback ──
+    location / {
+        proxy_pass http://app_backend;
+        proxy_http_version 1.1;
         proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Connection "";
+
+        # Timeouts
+        proxy_connect_timeout 30s;
+        proxy_send_timeout 30s;
+        proxy_read_timeout 30s;
+    }
+
+    # ── Cache static assets (Vite hashed filenames — immutable) ──
+    location /assets/ {
+        proxy_pass http://app_backend;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header Connection "";
         expires 1y;
         add_header Cache-Control "public, immutable";
     }
 
-    # Cache images
-    location /images/ {
-        proxy_pass http://app:3000;
+    # ── Cache videos ──
+    location /videos/ {
+        proxy_pass http://app_backend;
+        proxy_http_version 1.1;
         proxy_set_header Host $host;
+        proxy_set_header Connection "";
+        expires 30d;
+        add_header Cache-Control "public";
+    }
+
+    # ── Cache images ──
+    location /images/ {
+        proxy_pass http://app_backend;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header Connection "";
         expires 7d;
         add_header Cache-Control "public";
     }

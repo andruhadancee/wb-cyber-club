@@ -1,0 +1,174 @@
+name: Deploy Dev
+
+on:
+  push:
+    branches: [mvp-2]
+
+concurrency:
+  group: deploy-dev
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install & typecheck
+        run: |
+          npm ci --registry=https://registry.npmjs.org/
+          npx prisma generate --schema=server/prisma/schema.prisma
+          npx tsc --noEmit
+          npx tsc -p server/tsconfig.json --noEmit
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push image
+        run: |
+          IMAGE=ghcr.io/${{ github.repository }}/dev:latest
+          DOCKER_BUILDKIT=1 docker build -t "$IMAGE" .
+          docker push "$IMAGE"
+
+      - name: Deploy on server
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: root
+          password: ${{ secrets.SERVER_PASSWORD }}
+          command_timeout: 10m
+          script: |
+            set -e
+
+            IMAGE=ghcr.io/${{ github.repository }}/dev:latest
+            COMPOSE="-f docker-compose.staging.yml"
+            LOCAL_TAG="wb-cyber-club-dev:latest"
+
+            # DNS fallback
+            grep -q "8.8.8.8" /etc/resolv.conf || echo "nameserver 8.8.8.8" >> /etc/resolv.conf
+            grep -q "1.1.1.1" /etc/resolv.conf || echo "nameserver 1.1.1.1" >> /etc/resolv.conf
+
+            # Save previous image ID for rollback
+            PREV_IMAGE=$(docker images --no-trunc -q "$LOCAL_TAG" 2>/dev/null || echo "")
+            echo "Previous image: ${PREV_IMAGE:-none}"
+
+            # Login & pull
+            echo "${{ secrets.GH_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            for i in 1 2 3; do
+              echo "Pull attempt $i..."
+              docker pull "$IMAGE" && break
+              sleep 15
+            done
+
+            # Tag previous as rollback before overwriting
+            if [ -n "$PREV_IMAGE" ]; then
+              docker tag "$PREV_IMAGE" "$LOCAL_TAG-rollback" 2>/dev/null || true
+            fi
+
+            docker tag "$IMAGE" "$LOCAL_TAG"
+
+            # Update repo
+            if [ ! -d /opt/wb-cyber-club-dev ]; then
+              git clone -b mvp-2 https://${{ secrets.GH_TOKEN }}@github.com/andruhadancee/wb-cyber-club.git /opt/wb-cyber-club-dev
+            fi
+            cd /opt/wb-cyber-club-dev
+            git fetch origin mvp-2 && git reset --hard origin/mvp-2
+
+            # Restart app
+            docker compose $COMPOSE up -d --force-recreate --remove-orphans app-dev
+            docker image prune -f
+
+            echo "Dev deploy completed at $(date)"
+
+      - name: Verify deployment
+        id: verify
+        continue-on-error: true
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: root
+          password: ${{ secrets.SERVER_PASSWORD }}
+          script: |
+            cd /opt/wb-cyber-club-dev
+            COMPOSE="-f docker-compose.staging.yml"
+
+            echo "══ Container status ══"
+            docker compose $COMPOSE ps
+
+            echo "Waiting for app to start..."
+            for i in $(seq 1 6); do
+              sleep 5
+              STATUS=$(docker compose $COMPOSE ps app-dev --format '{{.Status}}' 2>/dev/null || echo "unknown")
+              echo "  [$i] $STATUS"
+              if echo "$STATUS" | grep -qi "healthy"; then
+                break
+              fi
+              if echo "$STATUS" | grep -qi "restarting\|exited"; then
+                echo "DEPLOY FAILED — container crashed"
+                docker compose $COMPOSE logs app-dev --tail 50 --no-color
+                exit 1
+              fi
+            done
+
+            echo "══ App logs (last 40) ══"
+            docker compose $COMPOSE logs app-dev --tail 40 --no-color
+
+            echo "══ Health check ══"
+            HEALTH=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 http://localhost:3001/api/health 2>/dev/null || echo "000")
+            echo "Health endpoint: HTTP $HEALTH"
+
+            if [ "$HEALTH" = "200" ] || [ "$HEALTH" = "401" ]; then
+              echo "Deploy OK"
+            else
+              echo "Health check failed: $HEALTH"
+              exit 1
+            fi
+
+      - name: Rollback on failure
+        if: steps.verify.outcome == 'failure'
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: root
+          password: ${{ secrets.SERVER_PASSWORD }}
+          script: |
+            LOCAL_TAG="wb-cyber-club-dev:latest"
+            COMPOSE="-f docker-compose.staging.yml"
+            cd /opt/wb-cyber-club-dev
+
+            ROLLBACK=$(docker images --no-trunc -q "${LOCAL_TAG}-rollback" 2>/dev/null || echo "")
+            if [ -z "$ROLLBACK" ]; then
+              echo "No rollback image available — cannot rollback"
+              exit 1
+            fi
+
+            echo "Rolling back to previous image: $ROLLBACK"
+            docker tag "$ROLLBACK" "$LOCAL_TAG"
+            docker compose $COMPOSE up -d --force-recreate app-dev
+
+            sleep 10
+            HEALTH=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 http://localhost:3001/api/health 2>/dev/null || echo "000")
+            echo "Rollback health: HTTP $HEALTH"
+
+            if [ "$HEALTH" = "200" ] || [ "$HEALTH" = "401" ]; then
+              echo "Rollback successful"
+            else
+              echo "Rollback also failed — manual intervention required"
+              docker compose $COMPOSE logs app-dev --tail 30 --no-color
+            fi
+
+      - name: Fail pipeline if deploy failed
+        if: steps.verify.outcome == 'failure'
+        run: exit 1

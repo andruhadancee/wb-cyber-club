@@ -1,0 +1,69 @@
+# ── Dev стек ──
+# Запуск: docker compose -f docker-compose.staging.yml up -d --build
+# Доступ: http://IP:3001 (Basic Auth: dev / dev123)
+
+services:
+  # ── App ──
+  app-dev:
+    build: .
+    image: wb-cyber-club-dev:latest
+    network_mode: host
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=redis://127.0.0.1:6380
+      - PORT=3001
+      - NODE_ENV=development
+      - DEV_AUTH=true
+      - DEV_USER=${DEV_USER:-dev}
+      - DEV_PASS=${DEV_PASS:-dev123}
+      - SENTRY_DSN=${SENTRY_DSN:-}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
+      - S3_ENDPOINT=${S3_ENDPOINT:-}
+      - S3_BUCKET=${S3_BUCKET:-}
+      - S3_REGION=${S3_REGION:-ru-1}
+      - S3_ACCESS_KEY=${S3_ACCESS_KEY:-}
+      - S3_SECRET_KEY=${S3_SECRET_KEY:-}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+    depends_on:
+      redis-dev:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3001/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    volumes:
+      - uploads_dev:/app/uploads
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+
+  # ── Redis ──
+  redis-dev:
+    image: redis:7-alpine
+    ports:
+      - "6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 64M
+
+volumes:
+  uploads_dev:

@@ -1,16 +1,12 @@
 import { apiGet, apiPost, apiPut, apiDelete } from '@/shared/api';
 import type { CalendarEvent, CalendarEventFormData } from '../types';
 
+/** Pure API functions — no caching, React Query handles that */
 export const calendarApi = {
   async getAll(month?: string | null): Promise<CalendarEvent[]> {
-    try {
-      let path = '/api/calendar';
-      if (month) path += `?month=${encodeURIComponent(month)}`;
-      return await apiGet<CalendarEvent[]>(path);
-    } catch (error) {
-      console.error('Ошибка получения календаря:', error);
-      return [];
-    }
+    let path = '/api/calendar';
+    if (month) path += `?month=${encodeURIComponent(month)}`;
+    return apiGet<CalendarEvent[]>(path);
   },
 
   async create(data: CalendarEventFormData): Promise<CalendarEvent> {

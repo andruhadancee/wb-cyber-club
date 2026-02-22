@@ -1,0 +1,166 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Tournament {
+  id                Int      @id @default(autoincrement())
+  title             String   @db.VarChar(255)
+  discipline_id     Int
+  date              String   @db.VarChar(100)
+  prize             String   @db.VarChar(100)
+  teams             Int      @default(0)
+  max_teams         Int
+  registration_link String?  @db.Text
+  custom_link       String?  @db.Text
+  status            String?  @default("active") @db.VarChar(50)
+  winner            String?  @db.VarChar(255)
+  winner_2nd        String?  @db.VarChar(255)
+  winner_3rd        String?  @db.VarChar(255)
+  watch_url         String?  @db.Text
+  start_time        DateTime? @db.Time()
+  image_url         String?  @db.Text
+  created_at        DateTime? @default(now())
+  updated_at        DateTime? @default(now())
+
+  discipline       Discipline @relation(fields: [discipline_id], references: [id])
+  calendar_events  CalendarEvent[]
+  registered_teams RegisteredTeam[]
+  bracket_matches  BracketMatch[]
+
+  @@index([status], name: "idx_tournaments_status")
+  @@index([discipline_id], name: "idx_tournaments_discipline")
+  @@map("tournaments")
+}
+
+model CalendarEvent {
+  id                Int      @id @default(autoincrement())
+  title             String   @db.VarChar(255)
+  description       String?  @db.Text
+  event_date        DateTime @db.Date
+  image_url         String?  @db.Text
+  discipline_id     Int?
+  prize             String?  @db.VarChar(100)
+  max_teams         Int?
+  registration_link String?  @db.Text
+  custom_link       String?  @db.Text
+  tournament_id     Int?
+  start_time        DateTime? @db.Time()
+  watch_url         String?  @db.Text
+  created_at        DateTime? @default(now())
+  updated_at        DateTime? @default(now())
+
+  discipline Discipline? @relation(fields: [discipline_id], references: [id])
+  tournament Tournament? @relation(fields: [tournament_id], references: [id])
+
+  @@index([event_date], name: "idx_calendar_event_date")
+  @@index([tournament_id], name: "idx_calendar_tournament_id")
+  @@map("calendar_events")
+}
+
+model RegistrationLink {
+  id            Int      @id @default(autoincrement())
+  discipline_id Int      @unique
+  link          String   @db.Text
+  created_at    DateTime? @default(now())
+  updated_at    DateTime? @default(now())
+
+  discipline Discipline @relation(fields: [discipline_id], references: [id])
+
+  @@map("registration_links")
+}
+
+model SocialLink {
+  id         Int      @id @default(autoincrement())
+  platform   String   @unique @db.VarChar(50)
+  link       String   @db.Text
+  created_at DateTime? @default(now())
+  updated_at DateTime? @default(now())
+
+  @@map("social_links")
+}
+
+model Discipline {
+  id         Int      @id @default(autoincrement())
+  name       String   @unique @db.VarChar(100)
+  color      String?  @db.VarChar(7)
+  logo_url   String?  @db.Text
+  created_at DateTime? @default(now())
+  updated_at DateTime? @default(now())
+
+  tournaments        Tournament[]
+  calendar_events    CalendarEvent[]
+  registration_links RegistrationLink[]
+  regulations        Regulation[]
+
+  @@map("disciplines")
+}
+
+model RegisteredTeam {
+  id                Int      @id @default(autoincrement())
+  tournament_id     Int?
+  name              String   @db.VarChar(255)
+  captain           String   @db.VarChar(255)
+  players           Int
+  registration_date String   @db.VarChar(100)
+  created_at        DateTime? @default(now())
+
+  tournament        Tournament? @relation(fields: [tournament_id], references: [id], onDelete: Cascade)
+
+  bracket_as_team1  BracketMatch[] @relation("BracketTeam1")
+  bracket_as_team2  BracketMatch[] @relation("BracketTeam2")
+  bracket_as_winner BracketMatch[] @relation("BracketWinner")
+
+  @@index([tournament_id], name: "idx_teams_tournament")
+  @@map("registered_teams")
+}
+
+model BracketMatch {
+  id            Int       @id @default(autoincrement())
+  tournament_id Int
+  round         Int
+  position      Int
+
+  team1_id      Int?
+  team2_id      Int?
+  winner_id     Int?
+
+  team1_name    String?   @db.VarChar(255)
+  team2_name    String?   @db.VarChar(255)
+  winner_name   String?   @db.VarChar(255)
+
+  score1        Int?
+  score2        Int?
+  status        String    @default("pending") @db.VarChar(20)
+  bracket_side  String    @default("upper") @db.VarChar(20)
+  scheduled_at  DateTime?
+  created_at    DateTime? @default(now())
+  updated_at    DateTime? @default(now())
+
+  tournament Tournament     @relation(fields: [tournament_id], references: [id], onDelete: Cascade)
+  team1      RegisteredTeam? @relation("BracketTeam1", fields: [team1_id], references: [id], onDelete: SetNull)
+  team2      RegisteredTeam? @relation("BracketTeam2", fields: [team2_id], references: [id], onDelete: SetNull)
+  winner     RegisteredTeam? @relation("BracketWinner", fields: [winner_id], references: [id], onDelete: SetNull)
+
+  @@index([tournament_id], name: "idx_bracket_tournament")
+  @@index([tournament_id, bracket_side, round, position], name: "idx_bracket_lookup")
+  @@map("bracket_matches")
+}
+
+model Regulation {
+  id              Int      @id @default(autoincrement())
+  discipline_id   Int
+  regulation_name String?  @db.VarChar(255)
+  pdf_url         String   @db.Text
+  created_at      DateTime? @default(now())
+  updated_at      DateTime? @default(now())
+
+  discipline Discipline @relation(fields: [discipline_id], references: [id])
+
+  @@index([discipline_id], name: "idx_regulations_discipline")
+  @@map("regulations")
+}

@@ -1,8 +1,1 @@
-export interface Discipline {
-  id: number;
-  name: string;
-  color: string | null;
-  logo_url: string | null;
-  created_at: string;
-  updated_at: string;
-}
+export type { Discipline } from '@shared/api/discipline';

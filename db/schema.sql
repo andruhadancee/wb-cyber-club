@@ -103,3 +103,7 @@ CREATE INDEX IF NOT EXISTS idx_tournaments_discipline ON tournaments(discipline)
 CREATE INDEX IF NOT EXISTS idx_teams_tournament ON registered_teams(tournament_id);
 CREATE INDEX IF NOT EXISTS idx_regulations_discipline ON regulations(discipline_name);
 
+-- Индексы календаря (используются в range query и JOIN по tournament_id)
+CREATE INDEX IF NOT EXISTS idx_calendar_event_date ON calendar_events(event_date);
+CREATE INDEX IF NOT EXISTS idx_calendar_tournament_id ON calendar_events(tournament_id);
+

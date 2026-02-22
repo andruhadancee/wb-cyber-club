@@ -1,86 +1,329 @@
-import { useEffect } from 'react';
-import { NavLink } from 'react-router-dom';
+import { useEffect, useState, useCallback, memo } from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
+import AppBar from '@mui/material/AppBar';
+import Toolbar from '@mui/material/Toolbar';
+import Box from '@mui/material/Box';
+import Typography from '@mui/material/Typography';
+import IconButton from '@mui/material/IconButton';
+import Drawer from '@mui/material/Drawer';
+import List from '@mui/material/List';
+import ListItemButton from '@mui/material/ListItemButton';
+import ListItemText from '@mui/material/ListItemText';
+import ListItemIcon from '@mui/material/ListItemIcon';
+import Divider from '@mui/material/Divider';
+import Chip from '@mui/material/Chip';
+import useMediaQuery from '@mui/material/useMediaQuery';
+import { useTheme, alpha } from '@mui/material/styles';
+import MenuIcon from '@mui/icons-material/Menu';
+import CloseIcon from '@mui/icons-material/Close';
+import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
+import GroupsIcon from '@mui/icons-material/Groups';
+import ArchiveIcon from '@mui/icons-material/Archive';
+import DescriptionIcon from '@mui/icons-material/Description';
+import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
+import TelegramIcon from '@mui/icons-material/Telegram';
+import EmailIcon from '@mui/icons-material/Email';
 import { useSocialLinkStore } from '@/entities/social-link/model';
 
-export function Header() {
+function TwitchIcon(props: React.SVGAttributes<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor" {...props}>
+      <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0 1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z" />
+    </svg>
+  );
+}
+
+function DiscordIcon(props: React.SVGAttributes<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor" {...props}>
+      <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z" />
+    </svg>
+  );
+}
+
+const NAV_ITEMS: { path: string; label: string; icon: React.ReactNode; end?: boolean }[] = [
+  { path: '/', label: 'Турниры', icon: <EmojiEventsIcon fontSize="small" />, end: true },
+  { path: '/teams', label: 'Команды', icon: <GroupsIcon fontSize="small" /> },
+  { path: '/archive', label: 'Архив', icon: <ArchiveIcon fontSize="small" /> },
+  { path: '/regulations', label: 'Регламент', icon: <DescriptionIcon fontSize="small" /> },
+  { path: '/calendar', label: 'Календарь', icon: <CalendarMonthIcon fontSize="small" /> },
+];
+
+export const Header = memo(function Header() {
   const { links, fetchAll } = useSocialLinkStore();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const location = useLocation();
 
   useEffect(() => {
     fetchAll();
   }, [fetchAll]);
 
+  useEffect(() => {
+    setDrawerOpen(false);
+  }, [location.pathname]);
+
+  const handleDrawerToggle = useCallback(() => {
+    setDrawerOpen((prev) => !prev);
+  }, []);
+
+  const primaryGlow = alpha(theme.palette.primary.main, 0.4);
+
   return (
-    <header>
-      <div className="container">
-        <NavLink to="/" className="logo">
-          <img src="/images/cyberclub-logo.png" alt="WB Cyber Club" className="logo-image" />
-        </NavLink>
+    <AppBar position="sticky" elevation={0}>
+      <Toolbar
+        sx={{
+          maxWidth: 1920,
+          width: '100%',
+          mx: 'auto',
+          px: { xs: 2, md: 3 },
+          minHeight: { xs: 56, md: 64 },
+          gap: 1,
+            justifyContent: 'space-between'
+        }}
+      >
+        {/* Left: Logo */}
+        <Box
+          component={NavLink}
+          to="/"
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            textDecoration: 'none',
+            flexShrink: 0,
+            minWidth: { md: 120 },
+            transition: 'all 0.3s ease',
+            '&:hover': {
+              filter: `drop-shadow(0 0 10px ${primaryGlow})`,
+            },
+          }}
+        >
+          <Box
+            component="img"
+            src="/images/cyberclub-logo.png"
+            alt="WB Cyber Club"
+            sx={{ height: { xs: 28, md: 32 } }}
+          />
+        </Box>
 
-        <nav>
-          <NavLink to="/" className={({ isActive }) => (isActive ? 'active' : '')} end>
-            Турниры
-          </NavLink>
-          <NavLink to="/teams" className={({ isActive }) => (isActive ? 'active' : '')}>
-            Команды
-          </NavLink>
-          <NavLink to="/archive" className={({ isActive }) => (isActive ? 'active' : '')}>
-            Архив турниров
-          </NavLink>
-          <NavLink to="/regulations" className={({ isActive }) => (isActive ? 'active' : '')}>
-            Регламент
-          </NavLink>
-          <NavLink to="/calendar" className={({ isActive }) => (isActive ? 'active' : '')}>
-            Календарь
-          </NavLink>
-        </nav>
+        {/* Center: Desktop nav */}
+        {!isMobile && (
+          <Box
+            sx={{
+              display: 'flex',
+              gap: 0.25,
+              bgcolor: alpha('#fff', 0.04),
+              borderRadius: 2.5,
+              p: 0.5,
+              border: `1px solid ${alpha('#fff', 0.04)}`,
+            }}
+          >
+            {NAV_ITEMS.map(({ path, label, icon, end }) => (
+              <Box
+                key={path}
+                component={NavLink}
+                to={path}
+                end={end}
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 0.75,
+                  px: 1.75,
+                  py: 0.75,
+                  borderRadius: 2,
+                  fontSize: '0.84rem',
+                  fontWeight: 500,
+                  color: 'text.secondary',
+                  textDecoration: 'none',
+                  transition: 'all 0.2s ease',
+                  whiteSpace: 'nowrap',
+                  '& .nav-icon': {
+                    transition: 'color 0.2s ease',
+                    color: alpha('#fff', 0.3),
+                    display: 'flex',
+                  },
+                  '&:hover': {
+                    color: 'text.primary',
+                    bgcolor: alpha('#fff', 0.06),
+                    '& .nav-icon': { color: 'text.secondary' },
+                  },
+                  '&.active': {
+                    color: '#fff',
+                    fontWeight: 700,
+                    bgcolor: alpha(theme.palette.primary.main, 0.2),
+                    boxShadow: `inset 0 0 0 1px ${alpha(theme.palette.primary.main, 0.3)}`,
+                    '& .nav-icon': { color: theme.palette.primary.light },
+                  },
+                }}
+              >
+                <Box className="nav-icon">{icon}</Box>
+                {label}
+              </Box>
+            ))}
+          </Box>
+        )}
 
-        <div className="social-links">
-          <a
-            href={links.twitch || '#'}
-            className="social-btn twitch"
-            title="Twitch"
-            target="_blank"
-            rel="noopener noreferrer"
+        {/* Social links */}
+        <Box sx={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 0.75,
+          minWidth: { md: 120 },
+          justifyContent: 'flex-end',
+        }}>
+          {links.telegram && (
+            <SocialChip href={links.telegram} icon={<TelegramIcon sx={{ fontSize: 18 }} />} label="Telegram" color="#26A5E4" compact={isMobile} />
+          )}
+          {links.discord && (
+            <SocialChip href={links.discord} icon={<DiscordIcon style={{ fontSize: 18 }} />} label="Discord" color="#5865F2" compact={isMobile} />
+          )}
+          {links.twitch && (
+            <SocialChip href={links.twitch} icon={<TwitchIcon style={{ fontSize: 18 }} />} label="Twitch" color="#9146FF" compact={isMobile} />
+          )}
+          {links.contact && (
+            <SocialChip href={links.contact} icon={<EmailIcon sx={{ fontSize: 18 }} />} label="Связаться" color="#4CAF50" compact={isMobile} />
+          )}
+        </Box>
+
+        {/* Mobile menu button */}
+        {isMobile && (
+          <IconButton
+            onClick={handleDrawerToggle}
+            sx={{
+              color: 'text.primary',
+              ml: 0.5,
+              transition: 'transform 0.2s ease',
+              '&:hover': { transform: 'scale(1.1)' },
+            }}
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z" />
-            </svg>
-          </a>
-          <a
-            href={links.telegram || '#'}
-            className="social-btn telegram"
-            title="Telegram"
-            target="_blank"
-            rel="noopener noreferrer"
+            <MenuIcon />
+          </IconButton>
+        )}
+      </Toolbar>
+
+      {/* Mobile drawer */}
+      <Drawer
+        anchor="right"
+        open={drawerOpen}
+        onClose={handleDrawerToggle}
+        PaperProps={{
+          sx: {
+            width: 280,
+            background: alpha('#111113', 0.95),
+            backdropFilter: 'blur(20px)',
+            borderLeft: `1px solid ${alpha('#fff', 0.06)}`,
+          },
+        }}
+      >
+        {/* Drawer header */}
+        <Box sx={{ p: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <Box component="img" src="/images/cyberclub-logo.png" alt="" sx={{ height: 24 }} />
+          </Box>
+          <IconButton
+            onClick={handleDrawerToggle}
+            sx={{
+              color: 'text.secondary',
+              '&:hover': { color: 'text.primary', transform: 'rotate(90deg)' },
+              transition: 'all 0.3s ease',
+            }}
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.446 1.394c-.14.18-.357.295-.6.295l.213-3.054 5.56-5.022c.24-.213-.054-.334-.373-.121l-6.869 4.326-2.96-.924c-.64-.203-.658-.64.135-.954l11.566-4.458c.538-.196 1.006.128.832.941z" />
-            </svg>
-          </a>
-          <a
-            href={links.discord || '#'}
-            className="social-btn discord"
-            title="Discord"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <svg width="20" height="20" viewBox="0 0 71 55" fill="none">
-              <path
-                d="M60.1045 4.8978C55.5792 2.8214 50.7265 1.2916 45.6527 0.41542C45.5603 0.39851 45.468 0.440769 45.4204 0.525289C44.7963 1.6353 44.105 3.0834 43.6209 4.2216C38.1637 3.4046 32.7345 3.4046 27.3892 4.2216C26.905 3.0581 26.1886 1.6353 25.5617 0.525289C25.5141 0.443589 25.4218 0.40133 25.3294 0.41542C20.2584 1.2888 15.4057 2.8186 10.8776 4.8978C10.8384 4.9147 10.8048 4.9429 10.7825 4.9795C1.57795 18.7309-0.943561 32.1443 0.293408 45.3914C0.299005 45.4562 0.335386 45.5182 0.385761 45.5576C6.45866 50.0174 12.3413 52.7249 18.1147 54.5195C18.2071 54.5477 18.305 54.5139 18.3638 54.4378C19.7295 52.5728 20.9469 50.6063 21.9907 48.5383C22.0523 48.4172 21.9935 48.2735 21.8676 48.2256C19.9366 47.4931 18.0979 46.6 16.3292 45.5858C16.1893 45.5041 16.1781 45.304 16.3068 45.2082C16.679 44.9293 17.0513 44.6391 17.4067 44.3461C17.471 44.2926 17.5606 44.2813 17.6362 44.3151C29.2558 49.6202 41.8354 49.6202 53.3179 44.3151C53.3935 44.2785 53.4831 44.2898 53.5502 44.3433C53.9057 44.6363 54.2779 44.9293 54.6529 45.2082C54.7816 45.304 54.7732 45.5041 54.6333 45.5858C52.8646 46.6197 51.0259 47.4931 49.0921 48.2228C48.9662 48.2707 48.9102 48.4172 48.9718 48.5383C50.038 50.6034 51.2554 52.5699 52.5959 54.435C52.6519 54.5139 52.7526 54.5477 52.845 54.5195C58.6464 52.7249 64.529 50.0174 70.6019 45.5576C70.6551 45.5182 70.6887 45.459 70.6943 45.3942C72.1747 30.0791 68.2147 16.7757 60.1968 4.9823C60.1772 4.9429 60.1437 4.9147 60.1045 4.8978ZM23.7259 37.3253C20.2276 37.3253 17.3451 34.1136 17.3451 30.1693C17.3451 26.225 20.1717 23.0133 23.7259 23.0133C27.308 23.0133 30.1626 26.2532 30.1066 30.1693C30.1066 34.1136 27.28 37.3253 23.7259 37.3253ZM47.3178 37.3253C43.8196 37.3253 40.9371 34.1136 40.9371 30.1693C40.9371 26.225 43.7636 23.0133 47.3178 23.0133C50.9 23.0133 53.7545 26.2532 53.6986 30.1693C53.6986 34.1136 50.9 37.3253 47.3178 37.3253Z"
-                fill="currentColor"
-              />
-            </svg>
-          </a>
-          <a
-            href={links.contact || '#'}
-            className="btn-contact"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Связаться с нами
-          </a>
-        </div>
-      </div>
-    </header>
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        </Box>
+        <Divider sx={{ borderColor: alpha('#fff', 0.06) }} />
+
+        {/* Nav items */}
+        <List sx={{ pt: 1.5, px: 1 }}>
+          {NAV_ITEMS.map(({ path, label, icon, end }) => (
+            <ListItemButton
+              key={path}
+              component={NavLink}
+              to={path}
+              end={end}
+              sx={{
+                borderRadius: 2.5,
+                mb: 0.5,
+                py: 1.25,
+                transition: 'all 0.2s ease',
+                '&:hover': {
+                  bgcolor: alpha('#fff', 0.04),
+                },
+                '&.active': {
+                  color: theme.palette.primary.light,
+                  bgcolor: alpha(theme.palette.primary.main, 0.12),
+                  boxShadow: `inset 0 0 0 1px ${alpha(theme.palette.primary.main, 0.2)}`,
+                  '& .MuiListItemIcon-root': { color: theme.palette.primary.light },
+                },
+              }}
+            >
+              <ListItemIcon sx={{ minWidth: 36, color: 'text.secondary' }}>{icon}</ListItemIcon>
+              <ListItemText primary={label} primaryTypographyProps={{ fontWeight: 600, fontSize: '0.92rem' }} />
+            </ListItemButton>
+          ))}
+        </List>
+
+        <Box sx={{ mt: 'auto', p: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>
+          <Divider sx={{ borderColor: alpha('#fff', 0.06), mb: 1 }} />
+          {links.telegram && (
+            <SocialChip href={links.telegram} icon={<TelegramIcon sx={{ fontSize: 18 }} />} label="Telegram" color="#26A5E4" fullWidth />
+          )}
+          {links.discord && (
+            <SocialChip href={links.discord} icon={<DiscordIcon style={{ fontSize: 18 }} />} label="Discord" color="#5865F2" fullWidth />
+          )}
+          {links.twitch && (
+            <SocialChip href={links.twitch} icon={<TwitchIcon style={{ fontSize: 18 }} />} label="Twitch" color="#9146FF" fullWidth />
+          )}
+          {links.contact && (
+            <SocialChip href={links.contact} icon={<EmailIcon sx={{ fontSize: 18 }} />} label="Связаться с нами" color="#4CAF50" fullWidth />
+          )}
+        </Box>
+      </Drawer>
+    </AppBar>
+  );
+});
+
+interface SocialChipProps {
+  href: string;
+  icon: React.ReactNode;
+  label: string;
+  color: string;
+  compact?: boolean;
+  fullWidth?: boolean;
+}
+
+function SocialChip({ href, icon, label, color, compact, fullWidth }: SocialChipProps) {
+  return (
+    <Chip
+      component="a"
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      icon={icon as React.ReactElement}
+      label={compact ? undefined : label}
+      clickable
+      variant="outlined"
+      sx={{
+        borderColor: alpha(color, 0.3),
+        color: alpha(color, 0.8),
+        fontWeight: 600,
+        transition: 'all 0.2s ease',
+        '& .MuiChip-icon': { color: 'inherit' },
+        '&:hover': {
+          borderColor: color,
+          color,
+          bgcolor: alpha(color, 0.08),
+          transform: 'translateY(-1px)',
+        },
+        ...(compact && {
+          '& .MuiChip-icon': { color: 'inherit', m: 0 },
+          '& .MuiChip-label': { display: 'none' },
+          justifyContent: 'center',
+          px: 1,
+        }),
+        ...(fullWidth && { width: '100%' }),
+      }}
+    />
   );
 }

@@ -1,37 +1,21 @@
-import { useState, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
+import Box from '@mui/material/Box';
+import Container from '@mui/material/Container';
 import { Header } from '@/widgets/header/Header';
-import { ParticleBackground } from '@/shared/ui/particles/ParticleBackground';
-import { Loader } from '@/shared/ui/loader/Loader';
+import { VideoBackground } from '@/shared/ui/video-background/VideoBackground';
 
 export function AppLayout() {
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const timeout = setTimeout(() => setLoading(false), 10000);
-    // Скрыть лоадер, когда страница готова
-    const handleReady = () => {
-      clearTimeout(timeout);
-      setLoading(false);
-    };
-    window.addEventListener('app-ready', handleReady);
-    return () => {
-      clearTimeout(timeout);
-      window.removeEventListener('app-ready', handleReady);
-    };
-  }, []);
-
   return (
-    <>
-      {loading && <Loader text="Загрузка..." />}
-      <ParticleBackground />
+    <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      <VideoBackground/>
       <Header />
-      <main className="container">
-        <Outlet context={{ hideLoader: () => setLoading(false) }} />
-      </main>
-    </>
+      <Container
+        maxWidth="xl"
+        component="main"
+        sx={{ flex: 1, py: 4, px: { xs: 2, md: 3, xl: 4 } }}
+      >
+        <Outlet />
+      </Container>
+    </Box>
   );
 }
-
-/** Хук для скрытия лоадера из дочерних страниц */
-export { useOutletContext } from 'react-router-dom';

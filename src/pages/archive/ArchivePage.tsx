@@ -1,117 +1,174 @@
-import { useEffect, useState, useMemo } from 'react';
-import { useOutletContext } from 'react-router-dom';
+import { useState, useMemo, memo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import Typography from '@mui/material/Typography';
+import Box from '@mui/material/Box';
+import Grid from '@mui/material/Grid';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import { AppImage } from '@/shared/ui/app-image/AppImage';
+import { DisciplineAvatar } from '@/shared/ui/discipline-avatar/DisciplineAvatar';
+import Chip from '@mui/material/Chip';
+import Button from '@mui/material/Button';
+import Stack from '@mui/material/Stack';
+import Divider from '@mui/material/Divider';
+import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import HistoryIcon from '@mui/icons-material/History';
+import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import { useTournamentStore } from '@/entities/tournament/model';
-import { useDisciplineStore } from '@/entities/discipline/model';
 import { DisciplineFilter } from '@/features/discipline-filter/DisciplineFilter';
-import { formatDateForDisplay, parseTournamentDate } from '@/shared/lib/date';
+import { formatDateForDisplay } from '@/shared/lib/date';
 import { getDisciplineIconUrl } from '@/shared/lib/discipline-icons';
+import { getDisciplineColor } from '@/shared/lib/discipline-colors';
+import { alpha } from '@mui/material/styles';
+import { Loader } from '@/shared/ui/loader/Loader';
+import { pageEntrance, staggerItem } from '@/shared/lib/animations';
 import type { Tournament } from '@/entities/tournament/types';
 
 export function ArchivePage() {
-  const { hideLoader } = useOutletContext<{ hideLoader: () => void }>();
-  const { pastTournaments, fetchPast } = useTournamentStore();
-  const { fetchAll: fetchDisciplines } = useDisciplineStore();
+  const { pastTournaments, isLoading } = useTournamentStore();
   const [selected, setSelected] = useState('all');
 
-  useEffect(() => {
-    Promise.all([fetchPast(), fetchDisciplines()]).finally(hideLoader);
-  }, [fetchPast, fetchDisciplines, hideLoader]);
-
   const sorted = useMemo(() => {
-    let list = [...pastTournaments];
-    if (selected !== 'all') list = list.filter((t) => t.discipline === selected);
-    return list.sort((a, b) => {
-      const da = parseTournamentDate(a.date);
-      const db = parseTournamentDate(b.date);
-      if (!da && !db) return 0;
-      if (!da) return 1;
-      if (!db) return -1;
-      return db.getTime() - da.getTime();
-    });
+    if (selected === 'all') return pastTournaments;
+    return pastTournaments.filter((t) => t.discipline === selected);
   }, [pastTournaments, selected]);
 
   const available = [...new Set(pastTournaments.map((t) => t.discipline))];
 
+  if (isLoading) return <Loader />;
+
   return (
-    <>
+    <Box sx={pageEntrance}>
+      <Typography variant="h4" fontWeight={800} gutterBottom>
+        Архив турниров
+      </Typography>
       <DisciplineFilter selected={selected} onSelect={setSelected} availableDisciplines={available} />
-      <div className="tournaments-grid" id="archive-grid">
-        {sorted.length === 0 ? (
-          <div className="empty-state">
-            <h3>{selected === 'all' ? 'Прошедших турниров пока нет' : 'Турниров по выбранной дисциплине нет'}</h3>
-            <p>{selected === 'all' ? 'История турниров появится здесь после их завершения' : 'Попробуйте выбрать другую дисциплину'}</p>
-          </div>
-        ) : (
-          sorted.map((t) => <ArchiveCard key={t.id} tournament={t} />)
-        )}
-      </div>
-    </>
+
+      {sorted.length === 0 ? (
+        <Box sx={{ textAlign: 'center', py: 10, opacity: 0.7 }}>
+          <HistoryIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2, opacity: 0.4 }} />
+          <Typography variant="h6" color="text.secondary">
+            {selected === 'all' ? 'Прошедших турниров пока нет' : 'Турниров по этой дисциплине нет'}
+          </Typography>
+        </Box>
+      ) : (
+        <Grid container spacing={3}>
+          {sorted.map((t, i) => (
+            <Grid key={t.id} size={{ xs: 12, sm: 6, md: 4 }}>
+              <ArchiveCard tournament={t} index={i} />
+            </Grid>
+          ))}
+        </Grid>
+      )}
+    </Box>
   );
 }
 
-function ArchiveCard({ tournament }: { tournament: Tournament }) {
+const ArchiveCard = memo(function ArchiveCard({ tournament, index = 0 }: { tournament: Tournament; index?: number }) {
+  const navigate = useNavigate();
   const watchUrl = tournament.watch_url?.trim() || null;
   const imageUrl = tournament.image_url?.trim() || null;
-  const iconUrl = getDisciplineIconUrl(tournament.discipline);
+  const iconUrl = getDisciplineIconUrl(tournament.discipline, tournament.discipline_logo_url);
+  const discColor = getDisciplineColor(tournament.discipline, tournament.discipline_color);
 
   return (
-    <div className="tournament-card">
+    <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', ...staggerItem(index) }}>
       {imageUrl && (
-        <div className="tournament-card-image">
-          <img src={imageUrl} alt={tournament.title} />
-        </div>
+        <AppImage src={imageUrl} alt={tournament.title} />
       )}
-      <div className="tournament-card-header">
-        <h2>{tournament.title}</h2>
-      </div>
-      <div className="tournament-info">
-        <div className="info-row">
-          <div className="info-item">
-            <span className="info-label">Дисциплина</span>
-            <span className="info-value">
-              <span className="discipline-with-icon">
-                {iconUrl ? (
-                  <img src={iconUrl} className="discipline-icon" alt={tournament.discipline} />
-                ) : (
-                  <span className="discipline-icon discipline-icon-emoji">🎮</span>
-                )}
-                <span>{tournament.discipline}</span>
-              </span>
-            </span>
-          </div>
-          <div className="info-item">
-            <span className="info-label">Дата</span>
-            <span className="info-value">{formatDateForDisplay(tournament.date)}</span>
-          </div>
-        </div>
-        <div className="info-row">
-          <div className="info-item">
-            <span className="info-label">Призовой фонд</span>
-            <span className="info-value">{tournament.prize}</span>
-          </div>
-          <div className="info-item">
-            <span className="info-label">Команд участвовало</span>
-            <span className="info-value">{tournament.teams || 0}</span>
-          </div>
-        </div>
-        {tournament.winner && (
-          <div className="info-row">
-            <div className="info-item" style={{ width: '100%' }}>
-              <span className="info-label">🏆 Победитель</span>
-              <span className="info-value" style={{ color: 'var(--color-pink-light)', fontWeight: 600 }}>
-                {tournament.winner}
-              </span>
-            </div>
-          </div>
+      <CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column', p: 2.5 }}>
+        <Chip
+          label={tournament.discipline}
+          variant="outlined"
+          avatar={
+            iconUrl ? (
+              <DisciplineAvatar src={iconUrl} alt={tournament.discipline} />
+            ) : undefined
+          }
+          sx={{
+            alignSelf: 'flex-start',
+            mb: 1.5,
+            borderColor: alpha(discColor, 0.4),
+            color: discColor,
+            fontWeight: 600,
+            '& .MuiChip-label': { color: discColor },
+          }}
+        />
+
+        <Typography variant="h6" fontWeight={700} sx={{ mb: 1.5, lineHeight: 1.3 }}>
+          {tournament.title}
+        </Typography>
+
+        <Divider sx={{ mb: 1.5, opacity: 0.5 }} />
+
+        <Stack spacing={0.75} sx={{ flex: 1 }}>
+          <Typography variant="body2" color="text.secondary">
+            {formatDateForDisplay(tournament.date)}
+          </Typography>
+          <Typography variant="body2">
+            Призовой фонд:{' '}
+            <Typography component="span" fontWeight={700} color="warning.main">
+              {tournament.prize}
+            </Typography>
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Команд: {tournament.teams || 0}
+          </Typography>
+        </Stack>
+
+        {(tournament.winner || tournament.winner_2nd || tournament.winner_3rd) && (
+          <Stack spacing={0.75} sx={{ mt: 1.5 }}>
+            {tournament.winner && (
+              <Chip
+                icon={<EmojiEventsIcon />}
+                label={tournament.winner}
+                sx={{ alignSelf: 'flex-start', fontWeight: 600, bgcolor: alpha('#fbbf24', 0.15), color: '#fbbf24', border: `1px solid ${alpha('#fbbf24', 0.3)}` }}
+              />
+            )}
+            {tournament.winner_2nd && (
+              <Chip
+                label={`2-е: ${tournament.winner_2nd}`}
+                variant="outlined"
+                sx={{ alignSelf: 'flex-start', fontWeight: 600, borderColor: alpha('#a0a0a0', 0.4), color: '#a0a0a0' }}
+              />
+            )}
+            {tournament.winner_3rd && (
+              <Chip
+                label={`3-е: ${tournament.winner_3rd}`}
+                variant="outlined"
+                sx={{ alignSelf: 'flex-start', fontWeight: 600, borderColor: alpha('#cd7f32', 0.4), color: '#cd7f32' }}
+              />
+            )}
+          </Stack>
         )}
-      </div>
-      <div className="tournament-watch-button-container">
-        {watchUrl && (
-          <a href={watchUrl} target="_blank" rel="noopener noreferrer" className="btn-submit">
-            Смотреть
-          </a>
+
+        {(tournament.has_bracket || watchUrl) && (
+          <Box sx={{ display: 'flex', gap: 1, mt: 2, flexWrap: 'wrap' }}>
+            {tournament.has_bracket && (
+              <Button
+                variant="outlined"
+                startIcon={<AccountTreeIcon />}
+                onClick={() => navigate(`/tournament/${tournament.id}/bracket`)}
+                sx={{ textTransform: 'none', fontSize: '0.78rem' }}
+              >
+                Сетка
+              </Button>
+            )}
+            {watchUrl && (
+              <Button
+                variant="outlined"
+                startIcon={<PlayArrowIcon />}
+                href={watchUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Смотреть
+              </Button>
+            )}
+          </Box>
         )}
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
-}
+});

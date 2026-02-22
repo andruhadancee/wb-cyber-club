@@ -1,12 +1,17 @@
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useEffect } from 'react';
+import TextField from '@mui/material/TextField';
+import MenuItem from '@mui/material/MenuItem';
+import Stack from '@mui/material/Stack';
+import Button from '@mui/material/Button';
+import Box from '@mui/material/Box';
 import { useDisciplineStore } from '@/entities/discipline/model';
 import type { Regulation } from '@/entities/regulation/types';
 
 const schema = z.object({
-  discipline_name: z.string().min(1, 'Выберите дисциплину'),
+  disciplineId: z.coerce.number().min(1, 'Выберите дисциплину'),
   regulation_name: z.string().optional(),
   pdf_url: z.string().url('Введите корректный URL').min(1, 'Обязательное поле'),
 });
@@ -17,54 +22,82 @@ interface Props {
   regulation?: Regulation | null;
   onSubmit: (data: FormValues & { id?: number }) => Promise<void>;
   onCancel: () => void;
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
-export function RegulationForm({ regulation, onSubmit, onCancel }: Props) {
+export function RegulationForm({ regulation, onSubmit, onCancel, onDirtyChange }: Props) {
   const { disciplines, fetchAll } = useDisciplineStore();
 
-  useEffect(() => { fetchAll(); }, [fetchAll]);
+  useEffect(() => {
+    fetchAll();
+  }, [fetchAll]);
 
-  const { register, handleSubmit, formState: { errors } } = useForm<FormValues>({
+  const {
+    control,
+    handleSubmit,
+    formState: { errors, isSubmitting, isDirty },
+  } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: regulation
       ? {
-          discipline_name: regulation.discipline_name,
+          disciplineId: regulation.discipline_id,
           regulation_name: regulation.regulation_name || '',
           pdf_url: regulation.pdf_url,
         }
       : undefined,
   });
 
+  useEffect(() => { onDirtyChange?.(isDirty); }, [isDirty, onDirtyChange]);
+
   const handleFormSubmit = async (data: FormValues) => {
     await onSubmit({ ...data, id: regulation?.id });
   };
 
   return (
-    <form id="regulation-form" onSubmit={handleSubmit(handleFormSubmit)}>
-      <div className="form-group">
-        <label htmlFor="regulation-discipline">Дисциплина *</label>
-        <select id="regulation-discipline" {...register('discipline_name')}>
-          <option value="">Выберите дисциплину</option>
-          {disciplines.map((d) => (
-            <option key={d.id} value={d.name}>{d.name}</option>
-          ))}
-        </select>
-        {errors.discipline_name && <small style={{ color: '#ef4444' }}>{errors.discipline_name.message}</small>}
-      </div>
-      <div className="form-group">
-        <label htmlFor="regulation-name">Название регламента</label>
-        <input type="text" id="regulation-name" placeholder="Регламент сезона 2025" {...register('regulation_name')} />
-        <p className="hint">Необязательно</p>
-      </div>
-      <div className="form-group">
-        <label htmlFor="regulation-pdf-url">Ссылка на PDF *</label>
-        <input type="text" id="regulation-pdf-url" placeholder="https://example.com/regulation.pdf" {...register('pdf_url')} />
-        {errors.pdf_url && <small style={{ color: '#ef4444' }}>{errors.pdf_url.message}</small>}
-      </div>
-      <div className="modal-footer">
-        <button type="button" className="btn-secondary" onClick={onCancel}>Отмена</button>
-        <button type="submit" className="btn-primary">Сохранить</button>
-      </div>
+    <form onSubmit={handleSubmit(handleFormSubmit)}>
+      <Stack spacing={2.5} sx={{ pt: 1 }}>
+        <Controller
+          name="disciplineId"
+          control={control}
+          render={({ field }) => (
+            <TextField
+              {...field}
+              value={field.value || ''}
+              onChange={(e) => field.onChange(Number(e.target.value))}
+              select
+              label="Дисциплина"
+              required
+              error={!!errors.disciplineId}
+              helperText={errors.disciplineId?.message}
+            >
+              <MenuItem value="">Выберите</MenuItem>
+              {disciplines.map((d) => (
+                <MenuItem key={d.id} value={d.id}>{d.name}</MenuItem>
+              ))}
+            </TextField>
+          )}
+        />
+        <Controller
+          name="regulation_name"
+          control={control}
+          render={({ field }) => (
+            <TextField {...field} label="Название регламента" placeholder="Регламент сезона 2025" helperText="Необязательно" />
+          )}
+        />
+        <Controller
+          name="pdf_url"
+          control={control}
+          render={({ field }) => (
+            <TextField {...field} label="Ссылка на PDF" required placeholder="https://example.com/regulation.pdf" error={!!errors.pdf_url} helperText={errors.pdf_url?.message} />
+          )}
+        />
+        <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end', pt: 1 }}>
+          <Button onClick={onCancel}>Отмена</Button>
+          <Button type="submit" variant="contained" disabled={isSubmitting}>
+            Сохранить
+          </Button>
+        </Box>
+      </Stack>
     </form>
   );
 }

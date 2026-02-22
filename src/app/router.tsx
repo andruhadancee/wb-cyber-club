@@ -1,25 +1,53 @@
+import { lazy, Suspense } from 'react';
 import { createBrowserRouter } from 'react-router-dom';
 import { AppLayout } from '@/widgets/layout/AppLayout';
-import { TournamentsPage } from '@/pages/tournaments/TournamentsPage';
-import { TeamsPage } from '@/pages/teams/TeamsPage';
-import { ArchivePage } from '@/pages/archive/ArchivePage';
-import { CalendarPage } from '@/pages/calendar/CalendarPage';
-import { RegulationsPage } from '@/pages/regulations/RegulationsPage';
-import { AdminPage } from '@/pages/admin/AdminPage';
+import { Loader } from '@/shared/ui/loader/Loader';
+
+// Lazy-loaded pages — каждая страница загружается по требованию
+const TournamentsPage = lazy(() =>
+  import('@/pages/tournaments/TournamentsPage').then((m) => ({ default: m.TournamentsPage })),
+);
+const TeamsPage = lazy(() =>
+  import('@/pages/teams/TeamsPage').then((m) => ({ default: m.TeamsPage })),
+);
+const ArchivePage = lazy(() =>
+  import('@/pages/archive/ArchivePage').then((m) => ({ default: m.ArchivePage })),
+);
+const CalendarPage = lazy(() =>
+  import('@/pages/calendar/CalendarPage').then((m) => ({ default: m.CalendarPage })),
+);
+const RegulationsPage = lazy(() =>
+  import('@/pages/regulations/RegulationsPage').then((m) => ({ default: m.RegulationsPage })),
+);
+const NotFoundPage = lazy(() =>
+  import('@/pages/not-found/NotFoundPage').then((m) => ({ default: m.NotFoundPage })),
+);
+const BracketPage = lazy(() =>
+  import('@/pages/bracket/BracketPage').then((m) => ({ default: m.BracketPage })),
+);
+const AdminPage = lazy(() =>
+  import('@/pages/admin/AdminPage').then((m) => ({ default: m.AdminPage })),
+);
+
+function SuspenseWrapper({ children }: { children: React.ReactNode }) {
+  return <Suspense fallback={<Loader />}>{children}</Suspense>;
+}
 
 export const router = createBrowserRouter([
   {
     element: <AppLayout />,
     children: [
-      { path: '/', element: <TournamentsPage /> },
-      { path: '/teams', element: <TeamsPage /> },
-      { path: '/archive', element: <ArchivePage /> },
-      { path: '/calendar', element: <CalendarPage /> },
-      { path: '/regulations', element: <RegulationsPage /> },
+      { path: '/', element: <SuspenseWrapper><TournamentsPage /></SuspenseWrapper> },
+      { path: '/teams', element: <SuspenseWrapper><TeamsPage /></SuspenseWrapper> },
+      { path: '/archive', element: <SuspenseWrapper><ArchivePage /></SuspenseWrapper> },
+      { path: '/calendar', element: <SuspenseWrapper><CalendarPage /></SuspenseWrapper> },
+      { path: '/regulations', element: <SuspenseWrapper><RegulationsPage /></SuspenseWrapper> },
+      { path: '/tournament/:id/bracket', element: <SuspenseWrapper><BracketPage /></SuspenseWrapper> },
+      { path: '*', element: <SuspenseWrapper><NotFoundPage /></SuspenseWrapper> },
     ],
   },
   {
     path: '/admin',
-    element: <AdminPage />,
+    element: <SuspenseWrapper><AdminPage /></SuspenseWrapper>,
   },
 ]);

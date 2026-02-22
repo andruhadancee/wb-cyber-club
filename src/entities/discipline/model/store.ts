@@ -1,48 +1,87 @@
-import { create } from 'zustand';
+import { useCallback, useMemo } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { disciplineApi } from '../api';
+import { queryKeys } from '@/shared/api/queryKeys';
 import type { Discipline } from '../types';
 
-interface DisciplineState {
-  disciplines: Discipline[];
-  colorsMap: Record<string, string | null>;
-  isLoading: boolean;
-  fetchAll: () => Promise<void>;
-  createDiscipline: (name: string, color?: string | null) => Promise<void>;
-  updateDiscipline: (id: number, data: Partial<Pick<Discipline, 'name' | 'color'>>) => Promise<void>;
-  removeDiscipline: (name: string) => Promise<void>;
+// ─── Queries ───
+
+export function useDisciplines() {
+  return useQuery<Discipline[]>({
+    queryKey: queryKeys.disciplines.all,
+    queryFn: () => disciplineApi.getAll(),
+  });
 }
 
-export const useDisciplineStore = create<DisciplineState>((set, get) => ({
-  disciplines: [],
-  colorsMap: {},
-  isLoading: false,
+// ─── Mutations ───
 
-  fetchAll: async () => {
-    set({ isLoading: true });
-    try {
-      const data = await disciplineApi.getAll();
-      const colorsMap: Record<string, string | null> = {};
-      data.forEach((d) => {
-        colorsMap[d.name] = d.color;
-      });
-      set({ disciplines: data, colorsMap, isLoading: false });
-    } catch {
-      set({ isLoading: false });
-    }
-  },
+export function useCreateDiscipline() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ name, color, logo_url }: { name: string; color?: string | null; logo_url?: string | null }) =>
+      disciplineApi.create(name, color, logo_url),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: queryKeys.disciplines.all }); },
+  });
+}
 
-  createDiscipline: async (name, color) => {
-    await disciplineApi.create(name, color);
-    await get().fetchAll();
-  },
+export function useUpdateDiscipline() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: Partial<Pick<Discipline, 'name' | 'color' | 'logo_url'>> }) =>
+      disciplineApi.update(id, data),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: queryKeys.disciplines.all }); },
+  });
+}
 
-  updateDiscipline: async (id, data) => {
-    await disciplineApi.update(id, data);
-    await get().fetchAll();
-  },
+export function useRemoveDiscipline() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => disciplineApi.remove(id),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: queryKeys.disciplines.all }); },
+  });
+}
 
-  removeDiscipline: async (name) => {
-    await disciplineApi.remove(name);
-    await get().fetchAll();
-  },
-}));
+// ─── Backward-compatible hook (replaces useDisciplineStore) ───
+
+export function useDisciplineStore() {
+  const disciplinesQuery = useDisciplines();
+  const createMut = useCreateDiscipline();
+  const updateMut = useUpdateDiscipline();
+  const removeMut = useRemoveDiscipline();
+
+  const disciplines = disciplinesQuery.data ?? [];
+
+  const colorsMap = useMemo(() => {
+    const map: Record<string, string | null> = {};
+    disciplines.forEach((d) => {
+      map[d.name] = d.color;
+      map[String(d.id)] = d.color;
+    });
+    return map;
+  }, [disciplines]);
+
+  const logosMap = useMemo(() => {
+    const map: Record<string, string | null> = {};
+    disciplines.forEach((d) => {
+      map[d.name] = d.logo_url;
+      map[String(d.id)] = d.logo_url;
+    });
+    return map;
+  }, [disciplines]);
+
+  const fetchAll = useCallback(async () => { await disciplinesQuery.refetch(); }, [disciplinesQuery.refetch]);
+  const createDiscipline = useCallback(async (name: string, color?: string | null, logo_url?: string | null) => { await createMut.mutateAsync({ name, color, logo_url }); }, [createMut.mutateAsync]);
+  const updateDiscipline = useCallback(async (id: number, data: Partial<Pick<Discipline, 'name' | 'color' | 'logo_url'>>) => { await updateMut.mutateAsync({ id, data }); }, [updateMut.mutateAsync]);
+  const removeDiscipline = useCallback(async (id: number) => { await removeMut.mutateAsync(id); }, [removeMut.mutateAsync]);
+
+  return {
+    disciplines,
+    colorsMap,
+    logosMap,
+    isLoading: disciplinesQuery.isLoading,
+    fetchAll,
+    createDiscipline,
+    updateDiscipline,
+    removeDiscipline,
+  };
+}

@@ -1,65 +1,87 @@
-import { create } from 'zustand';
+import { useCallback } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { tournamentApi } from '../api';
+import { queryKeys } from '@/shared/api/queryKeys';
 import type { Tournament, TournamentFormData } from '../types';
 
-interface TournamentState {
-  activeTournaments: Tournament[];
-  pastTournaments: Tournament[];
-  isLoading: boolean;
-  error: string | null;
-  fetchActive: (forceReload?: boolean) => Promise<void>;
-  fetchPast: (forceReload?: boolean) => Promise<void>;
-  createTournament: (data: TournamentFormData) => Promise<void>;
-  updateTournament: (data: TournamentFormData) => Promise<void>;
-  removeTournament: (id: number) => Promise<void>;
+// ─── Queries ───
+
+export function useActiveTournaments() {
+  return useQuery<Tournament[]>({
+    queryKey: queryKeys.tournaments.active(),
+    queryFn: () => tournamentApi.getAll('active'),
+  });
 }
 
-export const useTournamentStore = create<TournamentState>((set, get) => ({
-  activeTournaments: [],
-  pastTournaments: [],
-  isLoading: false,
-  error: null,
+export function usePastTournaments() {
+  return useQuery<Tournament[]>({
+    queryKey: queryKeys.tournaments.past(),
+    queryFn: () => tournamentApi.getAll('finished'),
+  });
+}
 
-  fetchActive: async (forceReload = false) => {
-    set({ isLoading: true, error: null });
-    try {
-      const data = await tournamentApi.getAll('active', forceReload);
-      set({ activeTournaments: data, isLoading: false });
-    } catch (error) {
-      set({ error: String(error), isLoading: false });
-    }
-  },
+// ─── Mutations ───
 
-  fetchPast: async (forceReload = false) => {
-    set({ isLoading: true, error: null });
-    try {
-      const data = await tournamentApi.getAll('finished', forceReload);
-      set({ pastTournaments: data, isLoading: false });
-    } catch (error) {
-      set({ error: String(error), isLoading: false });
-    }
-  },
+export function useCreateTournament() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: TournamentFormData) => tournamentApi.create(data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.tournaments.all });
+      qc.invalidateQueries({ queryKey: queryKeys.calendar.all });
+      qc.invalidateQueries({ queryKey: queryKeys.teams.all });
+    },
+  });
+}
 
-  createTournament: async (data) => {
-    await tournamentApi.create(data);
-    if (data.status === 'finished') {
-      await get().fetchPast(true);
-    } else {
-      await get().fetchActive(true);
-    }
-  },
+export function useUpdateTournament() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: TournamentFormData) => tournamentApi.update(data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.tournaments.all });
+      qc.invalidateQueries({ queryKey: queryKeys.calendar.all });
+      qc.invalidateQueries({ queryKey: queryKeys.teams.all });
+    },
+  });
+}
 
-  updateTournament: async (data) => {
-    await tournamentApi.update(data);
-    if (data.status === 'finished') {
-      await get().fetchPast(true);
-    }
-    await get().fetchActive(true);
-  },
+export function useRemoveTournament() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => tournamentApi.remove(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.tournaments.all });
+      qc.invalidateQueries({ queryKey: queryKeys.calendar.all });
+      qc.invalidateQueries({ queryKey: queryKeys.teams.all });
+    },
+  });
+}
 
-  removeTournament: async (id) => {
-    await tournamentApi.remove(id);
-    await get().fetchActive(true);
-    await get().fetchPast(true);
-  },
-}));
+// ─── Backward-compatible hook (replaces useTournamentStore) ───
+
+export function useTournamentStore() {
+  const activeQuery = useActiveTournaments();
+  const pastQuery = usePastTournaments();
+  const createMut = useCreateTournament();
+  const updateMut = useUpdateTournament();
+  const removeMut = useRemoveTournament();
+
+  const fetchActive = useCallback(async () => { await activeQuery.refetch(); }, [activeQuery.refetch]);
+  const fetchPast = useCallback(async () => { await pastQuery.refetch(); }, [pastQuery.refetch]);
+  const createTournament = useCallback(async (data: TournamentFormData) => { await createMut.mutateAsync(data); }, [createMut.mutateAsync]);
+  const updateTournament = useCallback(async (data: TournamentFormData) => { await updateMut.mutateAsync(data); }, [updateMut.mutateAsync]);
+  const removeTournament = useCallback(async (id: number) => { await removeMut.mutateAsync(id); }, [removeMut.mutateAsync]);
+
+  return {
+    activeTournaments: activeQuery.data ?? [],
+    pastTournaments: pastQuery.data ?? [],
+    isLoading: activeQuery.isLoading || pastQuery.isLoading,
+    error: activeQuery.error?.message || pastQuery.error?.message || null,
+    fetchActive,
+    fetchPast,
+    createTournament,
+    updateTournament,
+    removeTournament,
+  };
+}
