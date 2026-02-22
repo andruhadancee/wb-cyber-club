@@ -1,3 +1,6 @@
+import { initSentry } from './sentry';
+initSentry();
+
 import express from 'express';
 import path from 'path';
 import cors from 'cors';
@@ -128,6 +131,8 @@ async function start(): Promise<void> {
 }
 
 // ── Graceful shutdown ──
+const SHUTDOWN_TIMEOUT_MS = 15_000;
+
 async function shutdown(signal: string): Promise<void> {
   logger.info({ signal }, 'Shutdown initiated');
 
@@ -136,8 +141,19 @@ async function shutdown(signal: string): Promise<void> {
     archiveTimer = null;
   }
 
+  const forceExit = setTimeout(() => {
+    logger.warn('Forced shutdown — timeout exceeded');
+    process.exit(1);
+  }, SHUTDOWN_TIMEOUT_MS);
+  forceExit.unref();
+
   if (server) {
-    server.close(() => logger.info('HTTP server closed'));
+    await new Promise<void>((resolve) => {
+      server.close(() => {
+        logger.info('HTTP server closed (all connections drained)');
+        resolve();
+      });
+    });
   }
 
   await disconnectRedis();

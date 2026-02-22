@@ -48,6 +48,9 @@ services:
       - PORT=3000
       - NODE_ENV=production
       - DOMAIN=${DOMAIN}
+      - SENTRY_DSN=${SENTRY_DSN:-}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
     depends_on:
       postgres:
         condition: service_healthy
@@ -59,6 +62,11 @@ services:
       timeout: 5s
       retries: 3
       start_period: 15s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     restart: unless-stopped
     networks:
       - backend
