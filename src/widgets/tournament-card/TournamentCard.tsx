@@ -121,6 +121,8 @@ export const TournamentCard = memo(function TournamentCard({ tournament, regLink
   );
 });
 
+//test
+
 function InfoRow({ icon, label, children }: { icon: React.ReactNode; label: string; children: React.ReactNode }) {
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
