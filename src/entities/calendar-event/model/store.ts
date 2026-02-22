@@ -1,3 +1,4 @@
+import { useCallback } from 'react';
 import { create } from 'zustand';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { calendarApi } from '../api';
@@ -111,6 +112,11 @@ export function useCalendarStore() {
   const updateMut = useUpdateCalendarEvent();
   const removeMut = useRemoveCalendarEvent();
 
+  const fetchEvents = useCallback(async (_month?: string, _forceReload?: boolean) => { await eventsQuery.refetch(); }, [eventsQuery.refetch]);
+  const createEvent = useCallback(async (data: CalendarEventFormData) => { await createMut.mutateAsync(data); }, [createMut.mutateAsync]);
+  const updateEvent = useCallback(async (data: CalendarEventFormData) => { await updateMut.mutateAsync(data); }, [updateMut.mutateAsync]);
+  const removeEvent = useCallback(async (id: number) => { await removeMut.mutateAsync(id); }, [removeMut.mutateAsync]);
+
   return {
     events: eventsQuery.data ?? [],
     currentDate: uiStore.currentDate,
@@ -120,9 +126,9 @@ export function useCalendarStore() {
     prevMonth: uiStore.prevMonth,
     nextMonth: uiStore.nextMonth,
 
-    fetchEvents: async (_month?: string, _forceReload?: boolean) => { await eventsQuery.refetch(); },
-    createEvent: async (data: CalendarEventFormData) => { await createMut.mutateAsync(data); },
-    updateEvent: async (data: CalendarEventFormData) => { await updateMut.mutateAsync(data); },
-    removeEvent: async (id: number) => { await removeMut.mutateAsync(id); },
+    fetchEvents,
+    createEvent,
+    updateEvent,
+    removeEvent,
   };
 }

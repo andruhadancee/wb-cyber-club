@@ -8,8 +8,8 @@ const router = Router();
 
 router.get('/', async (req, res, next) => {
   try {
-    const discipline = req.query.discipline as string | undefined;
-    const regulations = await regulationService.getAll(discipline);
+    const disciplineId = req.query.disciplineId ? parseInt(req.query.disciplineId as string, 10) : undefined;
+    const regulations = await regulationService.getAll(disciplineId);
     res.json(regulations);
   } catch (err) { next(err); }
 });

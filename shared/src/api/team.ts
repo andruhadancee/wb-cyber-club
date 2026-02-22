@@ -21,5 +21,12 @@ export interface TeamFormData {
   players: number;
 }
 
+/** Bulk create data */
+export interface BulkCreateTeamData {
+  tournamentId: number;
+  names: string[];
+  players: number;
+}
+
 /** API returns teams grouped by tournament ID */
 export type TeamsByTournament = Record<string, Team[]>;

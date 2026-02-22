@@ -1,14 +1,14 @@
 import { z } from 'zod';
 
 export const createRegulationSchema = z.object({
-  discipline_name: z.string().min(1),
+  disciplineId: z.number().int().positive(),
   pdf_url: z.string().min(1),
   regulation_name: z.string().nullish(),
 });
 
 export const updateRegulationSchema = z.object({
+  disciplineId: z.number().int().positive().optional(),
   pdf_url: z.string().min(1),
-  discipline_name: z.string().optional(),
   regulation_name: z.string().nullish(),
 });
 

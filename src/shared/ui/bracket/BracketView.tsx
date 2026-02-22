@@ -78,15 +78,12 @@ function groupRounds(matches: BracketMatch[], side: BracketSide, prefix: string)
     }));
 }
 
-function sideRoundLabel(r: number, total: number, prefix: string): string {
-  if (prefix === 'GF') return 'Гранд-финал';
-  const tag = prefix ? `${prefix} ` : '';
-  if (r === total) return `${tag}Финал`;
-  // Для нижней сетки — только нумерация, иначе неинформативно
-  if (prefix === 'НС') return `${tag}Раунд ${r}`;
-  if (r === total - 1 && total > 2) return `${tag}Полуфинал`;
-  if (r === total - 2 && total > 3) return `${tag}1/4`;
-  return `${tag}Раунд ${r}`;
+function sideRoundLabel(r: number, total: number, _prefix: string): string {
+  if (_prefix === 'GF') return 'Гранд-финал';
+  if (r === total) return 'Финал';
+  if (r === total - 1 && total > 2) return 'Полуфинал';
+  if (r === total - 2 && total > 3) return '1/4';
+  return `Раунд ${r}`;
 }
 
 function computeLayout(matches: BracketMatch[]): BracketLayout {
@@ -238,7 +235,7 @@ function StatusBadge({ status }: { status: string; hasWinner: boolean }) {
   if (isLive) {
     return (
       <Box sx={{
-        position: 'absolute', top: 6, right: 8, display: 'flex', alignItems: 'center', gap: 0.4,
+        position: 'absolute', top: 4, left: '50%', transform: 'translateX(-50%)', display: 'flex', alignItems: 'center', gap: 0.4,
         px: 0.7, py: 0.15, borderRadius: '5px', zIndex: 2,
         bgcolor: alpha(theme.palette.error.main, 0.95),
         boxShadow: `0 0 8px ${alpha(theme.palette.error.main, 0.4)}`,
@@ -273,7 +270,7 @@ function StatusBadge({ status }: { status: string; hasWinner: boolean }) {
   // Pending
   return (
     <Box sx={{
-      position: 'absolute', top: 6, right: 8, display: 'flex', alignItems: 'center', gap: 0.3,
+      position: 'absolute', top: 4, left: '50%', transform: 'translateX(-50%)', display: 'flex', alignItems: 'center', gap: 0.3,
       px: 0.6, py: 0.15, borderRadius: '5px', zIndex: 2,
       bgcolor: alpha(isDark ? '#475569' : '#94a3b8', 0.25),
       border: `1px solid ${alpha(isDark ? '#64748b' : '#94a3b8', 0.2)}`,
@@ -555,7 +552,7 @@ function RoundsSection({
         <div style={{
           position: 'absolute',
           left: offsetX,
-          top: offsetY - HEADER_H - 8,
+          top: offsetY - HEADER_H - 20,
           width: rounds.length * (MATCH_W + CONNECTOR_W),
         }}>
           <Typography sx={{

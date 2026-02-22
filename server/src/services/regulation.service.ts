@@ -1,43 +1,53 @@
 import prisma from '../prisma';
 import { AppError } from '../app-error';
 import type { CreateRegulationInput, UpdateRegulationInput } from '../schemas/regulation.schema';
-import type { Regulation } from '@prisma/client';
 
-export async function getAll(discipline?: string): Promise<Regulation[]> {
-  if (discipline) {
-    return prisma.regulation.findMany({
-      where: { discipline_name: { equals: discipline, mode: 'insensitive' } },
-    });
-  }
+const INCLUDE_DISCIPLINE = { discipline: { select: { id: true, name: true } } } as const;
 
-  return prisma.regulation.findMany({
-    orderBy: [{ discipline_name: 'asc' }, { regulation_name: 'asc' }],
-  });
+function flattenRegulation(r: any) {
+  const { discipline: disc, ...rest } = r;
+  return { ...rest, discipline_name: disc.name };
 }
 
-export async function create(data: CreateRegulationInput): Promise<Regulation> {
-  return prisma.regulation.create({
+export async function getAll(disciplineId?: number) {
+  const where = disciplineId ? { discipline_id: disciplineId } : {};
+
+  const regulations = await prisma.regulation.findMany({
+    where,
+    include: INCLUDE_DISCIPLINE,
+    orderBy: [{ discipline_id: 'asc' }, { regulation_name: 'asc' }],
+  });
+
+  return regulations.map(flattenRegulation);
+}
+
+export async function create(data: CreateRegulationInput) {
+  const reg = await prisma.regulation.create({
     data: {
-      discipline_name: data.discipline_name,
+      discipline_id: data.disciplineId,
       pdf_url: data.pdf_url,
       regulation_name: data.regulation_name || null,
     },
+    include: INCLUDE_DISCIPLINE,
   });
+
+  return flattenRegulation(reg);
 }
 
-export async function update(id: number, data: UpdateRegulationInput): Promise<Regulation> {
+export async function update(id: number, data: UpdateRegulationInput) {
   const regulation = await prisma.regulation.update({
     where: { id },
     data: {
       pdf_url: data.pdf_url,
-      discipline_name: data.discipline_name,
+      discipline_id: data.disciplineId,
       regulation_name: data.regulation_name,
       updated_at: new Date(),
     },
+    include: INCLUDE_DISCIPLINE,
   });
 
   if (!regulation) throw AppError.notFound('Regulation not found');
-  return regulation;
+  return flattenRegulation(regulation);
 }
 
 export async function remove(id: number): Promise<void> {

@@ -1,85 +1,86 @@
+import dayjs from 'dayjs';
 import prisma from '../prisma';
 import { AppError } from '../app-error';
-import { parseRussianDateToISO, parseDateForSort } from '../date-utils';
+import { parseRussianDateToISO, parseDateForSort, parseStartTime, todayMSK } from '../date-utils';
 import { cacheInvalidate } from '../cache';
 import type { CreateTournamentInput, UpdateTournamentInput } from '../schemas/tournament.schema';
-import type { Tournament } from '@prisma/client';
+
+const INCLUDE_DISCIPLINE = { discipline: { select: { id: true, name: true, color: true, logo_url: true } } } as const;
 
 function invalidateTournamentCaches(): void {
   cacheInvalidate('route:/api/tournaments');
   cacheInvalidate('route:/api/calendar');
 }
 
-/** Parse "HH:mm" string into a valid Date or null */
-function parseStartTime(value: string | null | undefined): Date | null {
-  if (!value || !value.trim()) return null;
-  const match = value.trim().match(/^(\d{1,2}):(\d{2})$/);
-  if (!match) return null;
-  const d = new Date(`1970-01-01T${value.trim()}:00`);
-  return isNaN(d.getTime()) ? null : d;
-}
-
-/** Sanitise URL-like field: reject base64 data URIs and empty strings */
 function sanitiseUrl(value: string | null | undefined): string | null {
   if (!value || !value.trim()) return null;
   if (value.startsWith('data:')) return null;
   return value.trim();
 }
 
-export async function getAll(status?: string): Promise<Tournament[]> {
+type TournamentWithDiscipline = Awaited<ReturnType<typeof prisma.tournament.findFirst>> & {
+  discipline: { id: number; name: string; color: string | null; logo_url: string | null };
+};
+
+function flattenTournament(t: NonNullable<TournamentWithDiscipline>, hasBracket = false) {
+  const { discipline: disc, ...rest } = t;
+  return { ...rest, discipline: disc.name, discipline_color: disc.color, discipline_logo_url: disc.logo_url, has_bracket: hasBracket };
+}
+
+export async function getAll(status?: string) {
   const where = status ? { status } : {};
   const tournaments = await prisma.tournament.findMany({
     where,
+    include: INCLUDE_DISCIPLINE,
     orderBy: { date: 'asc' },
   });
 
-  // Sort by parsed date + time
-  tournaments.sort((a, b) => {
-    const dateA = parseDateForSort(a.date);
-    const dateB = parseDateForSort(b.date);
+  tournaments.sort((a: NonNullable<TournamentWithDiscipline>, b: NonNullable<TournamentWithDiscipline>) => {
+    const dateA = dayjs(parseDateForSort(a.date));
+    const dateB = dayjs(parseDateForSort(b.date));
     const timeA = a.start_time?.toString().match(/(\d{1,2}):(\d{2})/);
     const timeB = b.start_time?.toString().match(/(\d{1,2}):(\d{2})/);
-    if (timeA && timeB) {
-      dateA.setHours(parseInt(timeA[1]), parseInt(timeA[2]), 0, 0);
-      dateB.setHours(parseInt(timeB[1]), parseInt(timeB[2]), 0, 0);
-    }
-    return dateA.getTime() - dateB.getTime();
+    const fullA = timeA ? dateA.hour(parseInt(timeA[1])).minute(parseInt(timeA[2])) : dateA;
+    const fullB = timeB ? dateB.hour(parseInt(timeB[1])).minute(parseInt(timeB[2])) : dateB;
+    return fullA.valueOf() - fullB.valueOf();
   });
 
-  // Fire-and-forget: sync calendar events in background (don't block response)
   syncCalendarEvents(tournaments).catch((err) =>
     console.error('[tournament.getAll] calendar sync error:', err),
   );
 
-  return tournaments;
+  const bracketCounts = await prisma.bracketMatch.groupBy({
+    by: ['tournament_id'],
+    _count: { id: true },
+  });
+  const bracketSet = new Set(bracketCounts.map((b) => b.tournament_id));
+
+  return tournaments.map((t) => flattenTournament(t, bracketSet.has(t.id)));
 }
 
-/**
- * Create missing calendar events for active tournaments.
- * Runs in background — does not block the GET response.
- */
-async function syncCalendarEvents(tournaments: Tournament[]): Promise<void> {
-  const active = tournaments.filter((t) => t.status === 'active' && t.date);
+async function syncCalendarEvents(tournaments: TournamentWithDiscipline[]): Promise<void> {
+  const active = tournaments.filter((t) => t && t.status === 'active' && t.date);
   if (active.length === 0) return;
 
-  const ids = active.map((t) => t.id);
+  const ids = active.map((t) => t!.id);
   const existing = await prisma.calendarEvent.findMany({
     where: { tournament_id: { in: ids } },
     select: { tournament_id: true },
   });
-  const existingIds = new Set(existing.map((e) => e.tournament_id));
-  const missing = active.filter((t) => !existingIds.has(t.id));
+  const existingIds = new Set(existing.map((e: { tournament_id: number | null }) => e.tournament_id));
+  const missing = active.filter((t) => t && !existingIds.has(t.id));
   if (missing.length === 0) return;
 
   for (const t of missing) {
+    if (!t) continue;
     const eventDate = parseRussianDateToISO(t.date);
     if (eventDate) {
       try {
         await prisma.calendarEvent.create({
           data: {
             title: t.title,
-            event_date: new Date(eventDate),
-            discipline: t.discipline,
+            event_date: dayjs.utc(eventDate, 'YYYY-MM-DD').toDate(),
+            discipline_id: t.discipline_id,
             prize: t.prize,
             max_teams: t.max_teams,
             custom_link: t.custom_link,
@@ -95,27 +96,29 @@ async function syncCalendarEvents(tournaments: Tournament[]): Promise<void> {
   }
 }
 
-export async function create(data: CreateTournamentInput): Promise<Tournament> {
+export async function create(data: CreateTournamentInput) {
   const teamsCount = data.status === 'finished' && data.teams !== undefined ? data.teams : 0;
 
   const tournament = await prisma.tournament.create({
     data: {
       title: data.title,
-      discipline: data.discipline,
+      discipline_id: data.disciplineId,
       date: data.date,
       prize: data.prize,
       max_teams: data.maxTeams,
       custom_link: sanitiseUrl(data.customLink),
       status: data.status || 'active',
       winner: data.winner || null,
+      winner_2nd: data.winner2nd || null,
+      winner_3rd: data.winner3rd || null,
       teams: teamsCount,
       watch_url: sanitiseUrl(data.watchUrl),
       start_time: parseStartTime(data.startTime),
       image_url: sanitiseUrl(data.imageUrl),
     },
+    include: INCLUDE_DISCIPLINE,
   });
 
-  // Auto-create calendar event for active tournaments
   if (tournament.status === 'active' && data.date) {
     const eventDate = parseRussianDateToISO(data.date);
     if (eventDate) {
@@ -127,9 +130,9 @@ export async function create(data: CreateTournamentInput): Promise<Tournament> {
           data: {
             title: data.title,
             description: data.description || null,
-            event_date: new Date(eventDate),
+            event_date: dayjs.utc(eventDate, 'YYYY-MM-DD').toDate(),
             image_url: sanitiseUrl(data.imageUrl),
-            discipline: data.discipline,
+            discipline_id: data.disciplineId,
             prize: data.prize,
             max_teams: data.maxTeams,
             custom_link: sanitiseUrl(data.customLink),
@@ -143,37 +146,34 @@ export async function create(data: CreateTournamentInput): Promise<Tournament> {
   }
 
   invalidateTournamentCaches();
-  return tournament;
+  return flattenTournament(tournament);
 }
 
-export async function update(data: UpdateTournamentInput): Promise<Tournament> {
-  const updateData: Record<string, unknown> = {
-    title: data.title,
-    discipline: data.discipline,
-    date: data.date,
-    prize: data.prize,
-    max_teams: data.maxTeams,
-    custom_link: sanitiseUrl(data.customLink),
-    status: data.status,
-    winner: data.winner || null,
-    watch_url: sanitiseUrl(data.watchUrl),
-    start_time: parseStartTime(data.startTime),
-    image_url: sanitiseUrl(data.imageUrl),
-    updated_at: new Date(),
-  };
-
-  if (data.status === 'finished' && data.teams !== undefined) {
-    updateData.teams = data.teams;
-  }
-
+export async function update(data: UpdateTournamentInput) {
   const tournament = await prisma.tournament.update({
     where: { id: data.id },
-    data: updateData,
+    data: {
+      title: data.title,
+      discipline_id: data.disciplineId,
+      date: data.date,
+      prize: data.prize,
+      max_teams: data.maxTeams,
+      custom_link: sanitiseUrl(data.customLink),
+      status: data.status,
+      winner: data.winner || null,
+      winner_2nd: data.winner2nd || null,
+      winner_3rd: data.winner3rd || null,
+      watch_url: sanitiseUrl(data.watchUrl),
+      start_time: parseStartTime(data.startTime),
+      image_url: sanitiseUrl(data.imageUrl),
+      updated_at: new Date(),
+      ...(data.status === 'finished' && data.teams !== undefined ? { teams: data.teams } : {}),
+    },
+    include: INCLUDE_DISCIPLINE,
   });
 
   if (!tournament) throw AppError.notFound('Турнир не найден');
 
-  // Sync calendar event
   if (tournament.status === 'active' && data.date) {
     const eventDate = parseRussianDateToISO(data.date);
     if (eventDate) {
@@ -182,9 +182,9 @@ export async function update(data: UpdateTournamentInput): Promise<Tournament> {
         data: {
           title: data.title,
           description: data.description || null,
-          event_date: new Date(eventDate),
+          event_date: dayjs.utc(eventDate, 'YYYY-MM-DD').toDate(),
           image_url: sanitiseUrl(data.imageUrl),
-          discipline: data.discipline,
+          discipline_id: data.disciplineId,
           prize: data.prize,
           max_teams: data.maxTeams,
           custom_link: sanitiseUrl(data.customLink),
@@ -199,15 +199,57 @@ export async function update(data: UpdateTournamentInput): Promise<Tournament> {
   }
 
   invalidateTournamentCaches();
-  return tournament;
+  return flattenTournament(tournament);
 }
 
-export async function remove(id: number): Promise<Tournament> {
+/**
+ * Автоматическое архивирование активных турниров, чья дата уже прошла (по МСК).
+ * Запускается периодически из index.ts.
+ */
+export async function autoArchiveExpired(): Promise<number> {
+  const activeTournaments = await prisma.tournament.findMany({
+    where: { status: 'active' },
+    select: { id: true, date: true },
+  });
+
+  if (activeTournaments.length === 0) return 0;
+
+  const today = todayMSK();
+
+  const expiredIds: number[] = [];
+  for (const t of activeTournaments) {
+    const iso = parseRussianDateToISO(t.date);
+    if (iso && iso < today) {
+      expiredIds.push(t.id);
+    }
+  }
+
+  if (expiredIds.length === 0) return 0;
+
+  await prisma.$transaction([
+    prisma.tournament.updateMany({
+      where: { id: { in: expiredIds } },
+      data: { status: 'finished', updated_at: new Date() },
+    }),
+    prisma.calendarEvent.deleteMany({
+      where: { tournament_id: { in: expiredIds } },
+    }),
+  ]);
+
+  invalidateTournamentCaches();
+  console.log(`[auto-archive] Archived ${expiredIds.length} tournament(s): ${expiredIds.join(', ')}`);
+  return expiredIds.length;
+}
+
+export async function remove(id: number) {
   await prisma.calendarEvent.deleteMany({ where: { tournament_id: id } });
 
-  const tournament = await prisma.tournament.delete({ where: { id } });
+  const tournament = await prisma.tournament.delete({
+    where: { id },
+    include: INCLUDE_DISCIPLINE,
+  });
   if (!tournament) throw AppError.notFound('Турнир не найден');
 
   invalidateTournamentCaches();
-  return tournament;
+  return flattenTournament(tournament);
 }

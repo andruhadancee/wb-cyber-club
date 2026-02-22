@@ -1,25 +1,18 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
 import GroupsIcon from '@mui/icons-material/Groups';
 import { useTournamentStore } from '@/entities/tournament/model';
 import { useTeamStore } from '@/entities/team/model';
-import { useDisciplineStore } from '@/entities/discipline/model';
 import { DisciplineFilter } from '@/features/discipline-filter/DisciplineFilter';
 import { TeamSection } from '@/widgets/team-section/TeamSection';
 import { Loader } from '@/shared/ui/loader/Loader';
 import { pageEntrance } from '@/shared/lib/animations';
 
 export function TeamsPage() {
-  const { activeTournaments, fetchActive } = useTournamentStore();
-  const { teamsByTournament, fetchAll: fetchTeams } = useTeamStore();
-  const { fetchAll: fetchDisciplines } = useDisciplineStore();
+  const { activeTournaments, isLoading: tournamentsLoading } = useTournamentStore();
+  const { teamsByTournament, isLoading: teamsLoading } = useTeamStore();
   const [selected, setSelected] = useState('all');
-  const [ready, setReady] = useState(false);
-
-  useEffect(() => {
-    Promise.all([fetchActive(), fetchTeams(), fetchDisciplines()]).finally(() => setReady(true));
-  }, [fetchActive, fetchTeams, fetchDisciplines]);
 
   const enriched = useMemo(() => {
     return Object.entries(teamsByTournament).map(([tid, teams]) => {
@@ -27,7 +20,8 @@ export function TeamsPage() {
       return {
         tournamentId: tid,
         title: tournament?.title || `Турнир #${tid}`,
-        discipline: tournament?.discipline || teams[0]?.discipline || '',
+        discipline: tournament?.discipline || '',
+        logoUrl: tournament?.discipline_logo_url ?? null,
         teams: teams.map((team) => ({
           ...team,
           discipline: team.discipline || tournament?.discipline,
@@ -41,7 +35,7 @@ export function TeamsPage() {
   const filtered =
     selected === 'all' ? enriched : enriched.filter((e) => e.discipline === selected);
 
-  if (!ready) return <Loader />;
+  if (tournamentsLoading || teamsLoading) return <Loader />;
 
   return (
     <Box sx={pageEntrance}>
@@ -64,6 +58,7 @@ export function TeamsPage() {
             tournamentTitle={entry.title}
             discipline={entry.discipline}
             teams={entry.teams}
+            logoUrl={entry.logoUrl}
             index={i}
           />
         ))

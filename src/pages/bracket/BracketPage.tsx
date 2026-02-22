@@ -6,7 +6,6 @@ import Button from '@mui/material/Button';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { useBracketStore } from '@/entities/bracket/model';
 import { useTournamentStore } from '@/entities/tournament/model';
-import { useDisciplineStore } from '@/entities/discipline/model';
 import { BracketView } from '@/shared/ui/bracket/BracketView';
 import { Loader } from '@/shared/ui/loader/Loader';
 import { pageEntrance } from '@/shared/lib/animations';
@@ -17,8 +16,7 @@ export function BracketPage() {
   const tournamentId = Number(id);
 
   const { matches, isLoading, fetchByTournament } = useBracketStore();
-  const { activeTournaments, pastTournaments, fetchActive, fetchPast } = useTournamentStore();
-  const { colorsMap, fetchAll: fetchDisciplines } = useDisciplineStore();
+  const { activeTournaments, pastTournaments } = useTournamentStore();
 
   const tournament =
     activeTournaments.find((t) => t.id === tournamentId) ??
@@ -26,12 +24,9 @@ export function BracketPage() {
 
   useEffect(() => {
     fetchByTournament(tournamentId);
-    if (activeTournaments.length === 0) fetchActive();
-    if (pastTournaments.length === 0) fetchPast();
-    fetchDisciplines();
-  }, [tournamentId, fetchByTournament, fetchActive, fetchPast, fetchDisciplines, activeTournaments.length, pastTournaments.length]);
+  }, [tournamentId, fetchByTournament]);
 
-  const accentColor = tournament ? (colorsMap[tournament.discipline] ?? undefined) : undefined;
+  const accentColor = tournament?.discipline_color ?? undefined;
 
   if (isLoading) return <Loader text="Загрузка сетки..." />;
 

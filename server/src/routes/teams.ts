@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import * as teamService from '../services/team.service';
 import { validate } from '../middleware/validate';
-import { createTeamSchema, updateTeamSchema } from '../schemas/team.schema';
+import { createTeamSchema, updateTeamSchema, bulkCreateTeamSchema } from '../schemas/team.schema';
 import { parseIdFromQuery } from '../middleware/parseId';
 
 const router = Router();
@@ -25,6 +25,13 @@ router.post('/', validate(createTeamSchema), async (req, res, next) => {
   try {
     const team = await teamService.create(req.body);
     res.status(201).json(team);
+  } catch (err) { next(err); }
+});
+
+router.post('/bulk', validate(bulkCreateTeamSchema), async (req, res, next) => {
+  try {
+    const result = await teamService.bulkCreate(req.body);
+    res.status(201).json(result);
   } catch (err) { next(err); }
 });
 

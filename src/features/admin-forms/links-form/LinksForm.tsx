@@ -19,8 +19,8 @@ export function LinksForm() {
     linksApi.getAll().then(setLinks);
   }, [fetchAll]);
 
-  const handleChange = (discipline: string, value: string) => {
-    setLinks((prev) => ({ ...prev, [discipline]: value }));
+  const handleChange = (disciplineId: number, value: string) => {
+    setLinks((prev) => ({ ...prev, [String(disciplineId)]: value }));
   };
 
   const handleSave = async () => {
@@ -46,12 +46,12 @@ export function LinksForm() {
           return (
             <Box key={d.id} sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
               {iconUrl && (
-                <Box component="img" src={iconUrl} alt={d.name} sx={{ width: 24, height: 24, borderRadius: '50%', flexShrink: 0 }} />
+                <Box component="img" src={iconUrl} alt={d.name} sx={{ width: 24, height: 24, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
               )}
               <TextField
                 label={d.name}
-                value={links[d.name] || ''}
-                onChange={(e) => handleChange(d.name, e.target.value)}
+                value={links[String(d.id)] || ''}
+                onChange={(e) => handleChange(d.id, e.target.value)}
                 placeholder="https://..."
                 fullWidth
               />

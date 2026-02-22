@@ -40,7 +40,7 @@ export const CountdownTimer = memo(function CountdownTimer({ dateStr, startTime 
       <Chip
         icon={<PlayArrowIcon />}
         label="LIVE"
-        color="success"
+        color="error"
         sx={{
           fontWeight: 700,
           letterSpacing: '0.05em',

@@ -1,6 +1,6 @@
 import prisma from '../prisma';
 import { AppError } from '../app-error';
-import type { CreateTeamInput, UpdateTeamInput } from '../schemas/team.schema';
+import type { CreateTeamInput, UpdateTeamInput, BulkCreateTeamInput } from '../schemas/team.schema';
 import type { RegisteredTeam } from '@prisma/client';
 
 type TeamsByTournament = Record<string, RegisteredTeam[]>;
@@ -58,6 +58,23 @@ export async function create(data: CreateTeamInput): Promise<RegisteredTeam> {
 
   await updateTeamCount(data.tournamentId);
   return team;
+}
+
+export async function bulkCreate(data: BulkCreateTeamInput): Promise<{ created: number }> {
+  const regDate = new Date().toLocaleDateString('ru-RU');
+
+  await prisma.registeredTeam.createMany({
+    data: data.names.map((name) => ({
+      tournament_id: data.tournamentId,
+      name: name.trim(),
+      players: data.players,
+      captain: '',
+      registration_date: regDate,
+    })),
+  });
+
+  await updateTeamCount(data.tournamentId);
+  return { created: data.names.length };
 }
 
 export async function update(data: UpdateTeamInput): Promise<RegisteredTeam> {

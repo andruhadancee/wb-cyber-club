@@ -4,7 +4,6 @@ import Grid from '@mui/material/Grid';
 import Typography from '@mui/material/Typography';
 import SportsEsportsIcon from '@mui/icons-material/SportsEsports';
 import { useTournamentStore } from '@/entities/tournament/model';
-import { useDisciplineStore } from '@/entities/discipline/model';
 import { linksApi, type RegistrationLinks } from '@/shared/api/linksApi';
 import { DisciplineFilter } from '@/features/discipline-filter/DisciplineFilter';
 import { TournamentCard } from '@/widgets/tournament-card/TournamentCard';
@@ -12,17 +11,13 @@ import { Loader } from '@/shared/ui/loader/Loader';
 import { pageEntrance } from '@/shared/lib/animations';
 
 export function TournamentsPage() {
-  const { activeTournaments, fetchActive, isLoading } = useTournamentStore();
-  const { fetchAll: fetchDisciplines } = useDisciplineStore();
+  const { activeTournaments, isLoading } = useTournamentStore();
   const [selected, setSelected] = useState('all');
   const [links, setLinks] = useState<RegistrationLinks>({});
-  const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    Promise.all([fetchActive(), fetchDisciplines(), linksApi.getAll().then(setLinks)]).finally(() =>
-      setReady(true),
-    );
-  }, [fetchActive, fetchDisciplines]);
+    linksApi.getAll().then(setLinks);
+  }, []);
 
   const available = [...new Set(activeTournaments.map((t) => t.discipline))];
   const filtered =
@@ -32,11 +27,11 @@ export function TournamentsPage() {
 
   const getRegLink = (t: (typeof activeTournaments)[0]) => {
     if (t.custom_link?.trim()) return t.custom_link.trim();
-    if (links[t.discipline]) return links[t.discipline];
+    if (links[String(t.discipline_id)]) return links[String(t.discipline_id)];
     return '#';
   };
 
-  if (!ready || isLoading) return <Loader />;
+  if (isLoading) return <Loader />;
 
   return (
     <Box sx={pageEntrance}>
@@ -54,7 +49,7 @@ export function TournamentsPage() {
         <Grid container spacing={3}>
           {filtered.map((t, i) => (
             <Grid key={t.id} size={{ xs: 12, sm: 6, md: 4 }}>
-              <TournamentCard tournament={t} regLink={getRegLink(t)} index={i} />
+              <TournamentCard tournament={t} regLink={getRegLink(t)} logoUrl={t.discipline_logo_url} index={i} />
             </Grid>
           ))}
         </Grid>

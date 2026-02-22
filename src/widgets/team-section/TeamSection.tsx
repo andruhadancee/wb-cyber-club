@@ -21,6 +21,7 @@ interface Props {
   tournamentTitle: string;
   discipline: string;
   teams: Team[];
+  logoUrl?: string | null;
   index?: number;
 }
 
@@ -28,16 +29,17 @@ export const TeamSection = memo(function TeamSection({
   tournamentTitle,
   discipline,
   teams,
+  logoUrl,
   index = 0,
 }: Props) {
-  const iconUrl = getDisciplineIconUrl(discipline);
+  const iconUrl = getDisciplineIconUrl(discipline, logoUrl);
 
   return (
     <Accordion defaultExpanded sx={{ mb: 1, ...staggerItem(index) }}>
       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
           {iconUrl && (
-            <Box component="img" src={iconUrl} alt={discipline} sx={{ width: 24, height: 24, borderRadius: '50%' }} />
+            <Box component="img" src={iconUrl} alt={discipline} sx={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover' }} />
           )}
           <Typography fontWeight={600}>{tournamentTitle}</Typography>
           <Chip label={discipline} variant="outlined" />

@@ -1,5 +1,5 @@
 import { apiGet, apiPost, apiPut, apiDelete } from '@/shared/api';
-import type { TeamsByTournament, TeamFormData } from '../types';
+import type { TeamsByTournament, TeamFormData, BulkCreateTeamData } from '../types';
 
 /** Pure API functions — no caching, React Query handles that */
 export const teamApi = {
@@ -13,6 +13,10 @@ export const teamApi = {
 
   async create(data: TeamFormData): Promise<unknown> {
     return apiPost('/api/teams', data);
+  },
+
+  async bulkCreate(data: BulkCreateTeamData): Promise<{ created: number }> {
+    return apiPost<{ created: number }>('/api/teams/bulk', data);
   },
 
   async update(data: TeamFormData): Promise<unknown> {

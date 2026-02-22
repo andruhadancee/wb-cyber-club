@@ -26,13 +26,14 @@ import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import HistoryIcon from '@mui/icons-material/History';
 import GroupsIcon from '@mui/icons-material/Groups';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
-import CategoryIcon from '@mui/icons-material/Category';
+import SportsEsportsIcon from '@mui/icons-material/SportsEsports';
 import LinkIcon from '@mui/icons-material/Link';
 import DescriptionIcon from '@mui/icons-material/Description';
 import ShareIcon from '@mui/icons-material/Share';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
+import ContentPasteGoIcon from '@mui/icons-material/ContentPasteGo';
 import { useTournamentStore } from '@/entities/tournament/model';
-import { useTeamStore } from '@/entities/team/model';
+import { useTeamStore, useBulkCreateTeams } from '@/entities/team/model';
 import { useDisciplineStore } from '@/entities/discipline/model';
 import { useCalendarStore } from '@/entities/calendar-event/model';
 import { useRegulationStore } from '@/entities/regulation/model';
@@ -46,6 +47,7 @@ import { showSuccess, showError } from '@/shared/lib/toast';
 import { showConfirm } from '@/shared/ui/confirm-dialog/ConfirmDialog';
 import { TournamentForm } from '@/features/admin-forms/tournament-form/TournamentForm';
 import { TeamForm } from '@/features/admin-forms/team-form/TeamForm';
+import { BulkTeamForm } from '@/features/admin-forms/team-form/BulkTeamForm';
 import { CalendarEventForm } from '@/features/admin-forms/calendar-form/CalendarEventForm';
 import { RegulationForm } from '@/features/admin-forms/regulation-form/RegulationForm';
 import { DisciplineForm } from '@/features/admin-forms/discipline-form/DisciplineForm';
@@ -55,7 +57,6 @@ import { DisciplineFilter } from '@/features/discipline-filter/DisciplineFilter'
 import { CalendarGrid } from '@/widgets/calendar-grid/CalendarGrid';
 import { BracketView } from '@/shared/ui/bracket/BracketView';
 import { AdminBracketTab } from '@/features/admin-bracket/AdminBracketTab';
-import { linksApi } from '@/shared/api/linksApi';
 import type { Tournament } from '@/entities/tournament/types';
 import type { Team } from '@/entities/team/types';
 import type { CalendarEvent } from '@/entities/calendar-event/types';
@@ -71,7 +72,7 @@ const TAB_CONFIG: Record<TabName, { label: string; icon: React.ReactElement }> =
   teams: { label: 'Команды', icon: <GroupsIcon fontSize="small" /> },
   brackets: { label: 'Сетки', icon: <AccountTreeIcon fontSize="small" /> },
   calendar: { label: 'Календарь', icon: <CalendarMonthIcon fontSize="small" /> },
-  disciplines: { label: 'Дисциплины', icon: <CategoryIcon fontSize="small" /> },
+  disciplines: { label: 'Дисциплины', icon: <SportsEsportsIcon fontSize="small" /> },
   links: { label: 'Ссылки', icon: <LinkIcon fontSize="small" /> },
   regulations: { label: 'Регламент', icon: <DescriptionIcon fontSize="small" /> },
   social: { label: 'Соцсети', icon: <ShareIcon fontSize="small" /> },
@@ -86,7 +87,6 @@ export function AdminPanel() {
   const [filterCalendar, setFilterCalendar] = useState('all');
   const [searchActive, setSearchActive] = useState('');
   const [searchPast, setSearchPast] = useState('');
-  const [regLinks, setRegLinks] = useState<Record<string, string>>({});
 
   // Track whether current form has unsaved changes
   const formDirtyRef = useRef(false);
@@ -103,6 +103,7 @@ export function AdminPanel() {
   const [calendarModal, setCalendarModal] = useState<{ open: boolean; event?: CalendarEvent; defaultDate?: string }>({ open: false });
   const [regulationModal, setRegulationModal] = useState<{ open: boolean; regulation?: Regulation }>({ open: false });
   const [disciplineModal, setDisciplineModal] = useState<{ open: boolean; discipline?: Discipline }>({ open: false });
+  const [bulkTeamModal, setBulkTeamModal] = useState(false);
 
   // Stores
   const tournamentStore = useTournamentStore();
@@ -110,6 +111,7 @@ export function AdminPanel() {
   const disciplineStore = useDisciplineStore();
   const calendarStore = useCalendarStore();
   const regulationStore = useRegulationStore();
+  const bulkCreateMut = useBulkCreateTeams();
 
   const handleTabChange = useCallback((_: unknown, value: number) => {
     const key = TAB_KEYS[value];
@@ -117,10 +119,6 @@ export function AdminPanel() {
     localStorage.setItem('adminActiveTab', key);
   }, []);
 
-  // React Query auto-fetches data, only manual fetch needed for linksApi
-  useEffect(() => {
-    linksApi.getAll().then(setRegLinks);
-  }, []);
 
   // ─── Handlers ───
 
@@ -131,9 +129,10 @@ export function AdminPanel() {
       onConfirm: async () => {
         try {
           await tournamentStore.updateTournament({
-            id: t.id, title: t.title, discipline: t.discipline, date: t.date,
+            id: t.id, title: t.title, disciplineId: t.discipline_id, date: t.date,
             prize: t.prize, maxTeams: t.max_teams, customLink: t.custom_link,
-            status: 'finished', winner: t.winner, watchUrl: t.watch_url, startTime: normalizeTimeToHHmm(t.start_time),
+            status: 'finished', winner: t.winner, winner2nd: t.winner_2nd, winner3rd: t.winner_3rd,
+            watchUrl: t.watch_url, startTime: normalizeTimeToHHmm(t.start_time),
           });
           showSuccess('Турнир перенесён в архив');
         } catch (e) {
@@ -245,6 +244,16 @@ export function AdminPanel() {
     }
   };
 
+  const handleBulkTeamSubmit = async (data: { tournamentId: number; names: string[]; players: number }) => {
+    try {
+      const result = await bulkCreateMut.mutateAsync(data);
+      showSuccess(`Добавлено ${result.created} команд / игроков`);
+      setBulkTeamModal(false);
+    } catch (e) {
+      showError('Ошибка: ' + (e instanceof Error ? e.message : e));
+    }
+  };
+
   const handleCalendarSubmit = async (data: any) => {
     try {
       if (data.id) {
@@ -278,7 +287,7 @@ export function AdminPanel() {
   const handleDisciplineSubmit = async (data: any) => {
     try {
       if (data.id) {
-        await disciplineStore.updateDiscipline(data.id, { name: data.name, color: data.color });
+        await disciplineStore.updateDiscipline(data.id, { name: data.name, color: data.color, logo_url: data.logo_url });
         showSuccess('Дисциплина обновлена');
       }
       setDisciplineModal({ open: false });
@@ -304,6 +313,8 @@ export function AdminPanel() {
         return t.title.toLowerCase().includes(q)
           || t.discipline.toLowerCase().includes(q)
           || (t.winner?.toLowerCase().includes(q) ?? false)
+          || (t.winner_2nd?.toLowerCase().includes(q) ?? false)
+          || (t.winner_3rd?.toLowerCase().includes(q) ?? false)
           || t.prize.toLowerCase().includes(q);
       }
       return true;
@@ -366,7 +377,7 @@ export function AdminPanel() {
               </TableHead>
               <TableBody>
                 {filtered.map((t) => {
-                  const discColor = getDisciplineColor(t.discipline, colorsMap[t.discipline]);
+                  const discColor = getDisciplineColor(t.discipline, t.discipline_color ?? colorsMap[t.discipline]);
                   const time = normalizeTimeToHHmm(t.start_time);
                   return (
                     <TableRow
@@ -417,13 +428,27 @@ export function AdminPanel() {
                       </TableCell>
                       {isPast && (
                         <TableCell>
-                          {t.winner ? (
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                              <EmojiEventsIcon sx={{ fontSize: 16, color: 'success.main' }} />
-                              <Typography variant="body2" sx={{ fontWeight: 600, color: 'success.main' }}>
-                                {t.winner}
-                              </Typography>
-                            </Box>
+                          {(t.winner || t.winner_2nd || t.winner_3rd) ? (
+                            <Stack spacing={0.25}>
+                              {t.winner && (
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                  <EmojiEventsIcon sx={{ fontSize: 16, color: '#fbbf24' }} />
+                                  <Typography variant="body2" sx={{ fontWeight: 600, color: '#fbbf24' }}>
+                                    {t.winner}
+                                  </Typography>
+                                </Box>
+                              )}
+                              {t.winner_2nd && (
+                                <Typography variant="caption" color="text.secondary">
+                                  2-е: {t.winner_2nd}
+                                </Typography>
+                              )}
+                              {t.winner_3rd && (
+                                <Typography variant="caption" color="text.secondary">
+                                  3-е: {t.winner_3rd}
+                                </Typography>
+                              )}
+                            </Stack>
                           ) : (
                             <Typography variant="body2" color="text.disabled">—</Typography>
                           )}
@@ -466,11 +491,16 @@ export function AdminPanel() {
 
     return (
       <>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
           <Typography variant="h6">Команды</Typography>
-          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setTeamModal({ open: true })}>
-            Добавить команду
-          </Button>
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <Button variant="outlined" startIcon={<ContentPasteGoIcon />} onClick={() => setBulkTeamModal(true)}>
+              Массовое добавление
+            </Button>
+            <Button variant="contained" startIcon={<AddIcon />} onClick={() => setTeamModal({ open: true })}>
+              Добавить команду
+            </Button>
+          </Box>
         </Box>
         {data.length === 0 ? (
           <Typography color="text.secondary" sx={{ py: 4, textAlign: 'center' }}>
@@ -519,9 +549,28 @@ export function AdminPanel() {
     );
   };
 
-  const handleCalendarDayClick = useCallback((dateStr: string) => {
+  const handleCalendarAddEvent = useCallback((dateStr: string) => {
     setCalendarModal({ open: true, defaultDate: dateStr });
   }, []);
+
+  const handleCalendarEditEvent = useCallback((event: CalendarEvent) => {
+    setCalendarModal({ open: true, event });
+  }, []);
+
+  const handleCalendarDeleteEvent = useCallback((event: CalendarEvent) => {
+    showConfirm({
+      title: 'Удалить событие',
+      message: `Вы уверены, что хотите удалить "${event.title}"?`,
+      onConfirm: async () => {
+        try {
+          await calendarStore.removeEvent(event.id);
+          showSuccess('Событие удалено');
+        } catch (e) {
+          showError('Ошибка: ' + (e instanceof Error ? e.message : e));
+        }
+      },
+    });
+  }, [calendarStore]);
 
   const renderCalendar = () => (
     <>
@@ -532,10 +581,11 @@ export function AdminPanel() {
         selectedDiscipline={filterCalendar}
         disciplines={disciplineStore.disciplines}
         colorsMap={disciplineStore.colorsMap}
-        registrationLinks={regLinks}
-        onPrevMonth={() => { calendarStore.prevMonth(); setTimeout(() => calendarStore.fetchEvents(), 0); }}
-        onNextMonth={() => { calendarStore.nextMonth(); setTimeout(() => calendarStore.fetchEvents(), 0); }}
-        onDayClick={handleCalendarDayClick}
+        onPrevMonth={() => { calendarStore.prevMonth(); }}
+        onNextMonth={() => { calendarStore.nextMonth(); }}
+        onAddEvent={handleCalendarAddEvent}
+        onEditEvent={handleCalendarEditEvent}
+        onDeleteEvent={handleCalendarDeleteEvent}
       />
     </>
   );
@@ -565,7 +615,17 @@ export function AdminPanel() {
       <Stack spacing={1}>
         {disciplineStore.disciplines.map((d) => (
           <Paper key={d.id} variant="outlined" sx={{ p: 1.5, display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            <Box sx={{ width: 24, height: 24, borderRadius: 0.5, bgcolor: d.color || '#8b5abf', flexShrink: 0 }} />
+            {d.logo_url ? (
+              <Box
+                component="img"
+                src={d.logo_url}
+                alt={d.name}
+                sx={{ width: 40, height: 40, borderRadius: 0.5, objectFit: 'contain', flexShrink: 0 }}
+              />
+            ) : (
+              <Box sx={{ width: 40, height: 40, borderRadius: 0.5, bgcolor: d.color || '#8b5abf', flexShrink: 0 }} />
+            )}
+            <Box sx={{ width: 16, height: 16, borderRadius: '50%', bgcolor: d.color || '#8b5abf', flexShrink: 0, border: '1px solid', borderColor: 'divider' }} />
             <Typography sx={{ flex: 1 }}>{d.name}</Typography>
             <IconButton onClick={() => setDisciplineModal({ open: true, discipline: d })}>
               <EditIcon fontSize="small" />
@@ -692,6 +752,18 @@ export function AdminPanel() {
           onSubmit={handleTeamSubmit}
           onCancel={() => setTeamModal({ open: false })}
           onDirtyChange={handleDirtyChange}
+        />
+      </Modal>
+
+      {/* Bulk Team Modal */}
+      <Modal
+        open={bulkTeamModal}
+        onClose={() => setBulkTeamModal(false)}
+        title="Массовое добавление"
+      >
+        <BulkTeamForm
+          onSubmit={handleBulkTeamSubmit}
+          onCancel={() => setBulkTeamModal(false)}
         />
       </Modal>
 

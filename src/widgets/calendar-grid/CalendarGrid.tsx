@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback, memo } from 'react';
+import { useMemo, useState, memo } from 'react';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
 import Typography from '@mui/material/Typography';
@@ -6,7 +6,6 @@ import IconButton from '@mui/material/IconButton';
 import Chip from '@mui/material/Chip';
 import Stack from '@mui/material/Stack';
 import Tooltip from '@mui/material/Tooltip';
-import Badge from '@mui/material/Badge';
 import Button from '@mui/material/Button';
 import Divider from '@mui/material/Divider';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
@@ -14,12 +13,17 @@ import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import TodayIcon from '@mui/icons-material/Today';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import MilitaryTechIcon from '@mui/icons-material/MilitaryTech';
+import GroupsIcon from '@mui/icons-material/Groups';
 import { alpha, useTheme } from '@mui/material/styles';
 import { getDisciplineColor } from '@/shared/lib/discipline-colors';
 import { getDisciplineIconUrl } from '@/shared/lib/discipline-icons';
 import { formatLocalDate, normalizeTimeToHHmm } from '@/shared/lib/date';
 import { useInterval } from '@/shared/hooks/useInterval';
-import { TournamentButton } from '@/features/tournament-button/TournamentButton';
 import { Modal } from '@/shared/ui/modal/Modal';
 import type { CalendarEvent } from '@/entities/calendar-event/types';
 import type { Discipline } from '@/entities/discipline/types';
@@ -30,11 +34,11 @@ interface Props {
   selectedDiscipline: string;
   disciplines: Discipline[];
   colorsMap: Record<string, string | null>;
-  registrationLinks: Record<string, string>;
   onPrevMonth: () => void;
   onNextMonth: () => void;
-  /** Callback при клике на день (для админки — создание события) */
-  onDayClick?: (dateStr: string) => void;
+  onAddEvent?: (dateStr: string) => void;
+  onEditEvent?: (event: CalendarEvent) => void;
+  onDeleteEvent?: (event: CalendarEvent) => void;
 }
 
 const WEEKDAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
@@ -57,10 +61,11 @@ export const CalendarGrid = memo(function CalendarGrid({
   selectedDiscipline,
   disciplines,
   colorsMap,
-  registrationLinks,
   onPrevMonth,
   onNextMonth,
-  onDayClick,
+  onAddEvent,
+  onEditEvent,
+  onDeleteEvent,
 }: Props) {
   const [modalDate, setModalDate] = useState<string | null>(null);
   const [, setTick] = useState(0);
@@ -106,17 +111,6 @@ export const CalendarGrid = memo(function CalendarGrid({
     return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
   }, [modalDate]);
 
-  const getRegLink = useCallback(
-    (event: CalendarEvent): string => {
-      if (event.custom_link?.trim()) return event.custom_link.trim();
-      if (event.registration_link?.trim()) return event.registration_link.trim();
-      if (event.discipline && registrationLinks[event.discipline]) {
-        return registrationLinks[event.discipline];
-      }
-      return '#';
-    },
-    [registrationLinks],
-  );
 
   return (
     <>
@@ -232,6 +226,20 @@ export const CalendarGrid = memo(function CalendarGrid({
             ),
           ];
 
+          const disciplineInfo = [...new Set(
+            dayEvents.filter((e) => e.discipline).map((e) => e.discipline!),
+          )].map((d) => {
+            const ev = dayEvents.find((e) => e.discipline === d);
+            return {
+              name: d,
+              color: getDisciplineColor(d, colorsMap[d]),
+              iconUrl: getDisciplineIconUrl(d, ev?.discipline_logo_url),
+            };
+          });
+
+          const isMultiDiscipline = disciplineInfo.length > 1;
+          const gradientColors = disciplineInfo.map((di) => di.color);
+
           const accentColor =
             hasEvents && uniqueDisciplines.length === 1
               ? getDisciplineColor(uniqueDisciplines[0], colorsMap[uniqueDisciplines[0]])
@@ -250,13 +258,7 @@ export const CalendarGrid = memo(function CalendarGrid({
             >
               <Paper
                 variant="outlined"
-                onClick={() => {
-                  if (onDayClick) {
-                    onDayClick(dateStr);
-                  } else {
-                    setModalDate(dateStr);
-                  }
-                }}
+                onClick={() => setModalDate(dateStr)}
                 sx={{
                   p: { xs: 0.5, md: 1 },
                   minHeight: { xs: 48, md: 80 },
@@ -265,25 +267,36 @@ export const CalendarGrid = memo(function CalendarGrid({
                   overflow: 'hidden',
                   display: 'flex',
                   flexDirection: 'column',
-                  borderColor: hasEvents ? alpha(accentColor, 0.35) : 'divider',
-                  borderWidth: hasEvents ? 1.5 : 1,
+                  borderColor: isMultiDiscipline
+                    ? 'transparent'
+                    : hasEvents
+                      ? alpha(accentColor, 0.35)
+                      : 'divider',
+                  borderWidth: isMultiDiscipline ? 2 : hasEvents ? 1.5 : 1,
                   transition: 'all 0.2s ease',
-                  ...(isToday && {
+                  ...(isToday && !isMultiDiscipline && {
                     borderColor: theme.palette.primary.main,
                     borderWidth: 2,
                     boxShadow: `0 0 12px ${alpha(theme.palette.primary.main, 0.2)}`,
+                  }),
+                  ...(isMultiDiscipline && {
+                    background: `linear-gradient(${theme.palette.background.paper}, ${theme.palette.background.paper}) padding-box, linear-gradient(135deg, ${gradientColors.join(', ')}) border-box`,
+                    ...(isToday && {
+                      boxShadow: `0 0 12px ${alpha(theme.palette.primary.main, 0.2)}`,
+                    }),
                   }),
                   '&:hover': {
                     bgcolor: hasEvents
                       ? alpha(accentColor, 0.06)
                       : alpha('#fff', 0.02),
-                    borderColor: hasEvents
-                      ? alpha(accentColor, 0.6)
-                      : alpha(theme.palette.primary.main, 0.3),
+                    ...(!isMultiDiscipline && {
+                      borderColor: hasEvents
+                        ? alpha(accentColor, 0.6)
+                        : alpha(theme.palette.primary.main, 0.3),
+                    }),
                     transform: 'scale(1.03)',
                     zIndex: 1,
                   },
-                  // Bottom color bar for event days
                   ...(hasEvents && {
                     '&::after': {
                       content: '""',
@@ -300,7 +313,7 @@ export const CalendarGrid = memo(function CalendarGrid({
                   }),
                 }}
               >
-                {/* Day number */}
+                {/* Day number + discipline icons */}
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <Typography
                     variant="caption"
@@ -325,25 +338,61 @@ export const CalendarGrid = memo(function CalendarGrid({
                   >
                     {day}
                   </Typography>
-                  {/* Event count badge (desktop) */}
-                  {hasEvents && dayEvents.length > 1 && (
-                    <Box
-                      sx={{
-                        display: { xs: 'none', md: 'flex' },
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        width: 18,
-                        height: 18,
-                        borderRadius: '50%',
-                        bgcolor: alpha(accentColor, 0.2),
-                        fontSize: '0.6rem',
-                        fontWeight: 700,
-                        color: accentColor,
-                      }}
-                    >
-                      {dayEvents.length}
-                    </Box>
-                  )}
+
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    {/* Discipline icons */}
+                    {hasEvents && disciplineInfo.slice(0, 3).map((di) => (
+                      di.iconUrl ? (
+                        <Tooltip key={di.name} title={di.name} arrow placement="top">
+                          <Box
+                            component="img"
+                            src={di.iconUrl}
+                            alt={di.name}
+                            sx={{
+                              width: { xs: 14, md: 18 },
+                              height: { xs: 14, md: 18 },
+                              borderRadius: '50%',
+                              border: `1.5px solid ${alpha(di.color, 0.5)}`,
+                              objectFit: 'cover',
+                              flexShrink: 0,
+                            }}
+                          />
+                        </Tooltip>
+                      ) : (
+                        <Box
+                          key={di.name}
+                          sx={{
+                            width: { xs: 10, md: 14 },
+                            height: { xs: 10, md: 14 },
+                            borderRadius: '50%',
+                            bgcolor: alpha(di.color, 0.3),
+                            border: `1.5px solid ${di.color}`,
+                            flexShrink: 0,
+                          }}
+                        />
+                      )
+                    ))}
+
+                    {/* Event count badge (desktop) */}
+                    {hasEvents && dayEvents.length > 1 && (
+                      <Box
+                        sx={{
+                          display: { xs: 'none', md: 'flex' },
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: 18,
+                          height: 18,
+                          borderRadius: '50%',
+                          bgcolor: alpha(accentColor, 0.2),
+                          fontSize: '0.6rem',
+                          fontWeight: 700,
+                          color: accentColor,
+                        }}
+                      >
+                        {dayEvents.length}
+                      </Box>
+                    )}
+                  </Box>
                 </Box>
 
                 {/* Event titles */}
@@ -353,6 +402,9 @@ export const CalendarGrid = memo(function CalendarGrid({
                       const evColor = e.discipline
                         ? getDisciplineColor(e.discipline, colorsMap[e.discipline ?? ''])
                         : theme.palette.primary.main;
+                      const evIconUrl = e.discipline
+                        ? getDisciplineIconUrl(e.discipline, e.discipline_logo_url)
+                        : null;
                       return (
                         <Box
                           key={e.id}
@@ -367,6 +419,20 @@ export const CalendarGrid = memo(function CalendarGrid({
                             borderLeft: `2px solid ${evColor}`,
                           }}
                         >
+                          {evIconUrl && (
+                            <Box
+                              component="img"
+                              src={evIconUrl}
+                              alt={e.discipline ?? ''}
+                              sx={{
+                                width: 12,
+                                height: 12,
+                                borderRadius: '50%',
+                                objectFit: 'cover',
+                                flexShrink: 0,
+                              }}
+                            />
+                          )}
                           <Typography
                             variant="caption"
                             noWrap
@@ -390,20 +456,6 @@ export const CalendarGrid = memo(function CalendarGrid({
                         +{dayEvents.length - 2} ещё
                       </Typography>
                     )}
-                    {/* Mobile: just dots */}
-                    <Box sx={{ display: { xs: 'flex', md: 'none' }, gap: 0.5, mt: 0.25 }}>
-                      {uniqueDisciplines.slice(0, 3).map((d) => (
-                        <Box
-                          key={d}
-                          sx={{
-                            width: 6,
-                            height: 6,
-                            borderRadius: '50%',
-                            bgcolor: getDisciplineColor(d, colorsMap[d]),
-                          }}
-                        />
-                      ))}
-                    </Box>
                   </Stack>
                 )}
               </Paper>
@@ -419,112 +471,272 @@ export const CalendarGrid = memo(function CalendarGrid({
         title={modalDateFormatted}
         maxWidth="sm"
       >
-        {modalEvents.length === 0 ? (
-          <Box sx={{ textAlign: 'center', py: 4 }}>
-            <TodayIcon sx={{ fontSize: 48, color: 'text.secondary', opacity: 0.3, mb: 1 }} />
-            <Typography color="text.secondary">На этот день пока ничего не запланировано.</Typography>
-          </Box>
-        ) : (
-          <Stack spacing={2}>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: -0.5 }}>
-              {modalEvents.length} {modalEvents.length === 1 ? 'событие' : 'событий'}
-            </Typography>
-            {modalEvents.map((e) => {
-              const regLink = getRegLink(e);
+        <Stack spacing={2}>
+          {modalEvents.length === 0 ? (
+            <Box sx={{ textAlign: 'center', py: 4 }}>
+              <TodayIcon sx={{ fontSize: 48, color: 'text.secondary', opacity: 0.3, mb: 1 }} />
+              <Typography color="text.secondary">На этот день пока ничего не запланировано.</Typography>
+            </Box>
+          ) : (
+            <>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: -0.5 }}>
+                {modalEvents.length} {modalEvents.length === 1 ? 'событие' : 'событий'}
+              </Typography>
+              {modalEvents.map((e) => {
               const iconUrl = e.discipline
-                ? getDisciplineIconUrl(
-                    e.discipline,
-                    disciplines.find((d) => d.name === e.discipline)?.logo_url,
-                  )
-                : null;
-              const evColor = e.discipline
-                ? getDisciplineColor(e.discipline, colorsMap[e.discipline ?? ''])
-                : theme.palette.primary.main;
+                  ? getDisciplineIconUrl(e.discipline, e.discipline_logo_url)
+                  : null;
+                const evColor = e.discipline
+                  ? getDisciplineColor(e.discipline, colorsMap[e.discipline ?? ''])
+                  : theme.palette.primary.main;
 
-              return (
-                <Paper
-                  key={e.id}
-                  variant="outlined"
-                  sx={{
-                    p: 2.5,
-                    borderLeft: `4px solid ${evColor}`,
-                    borderRadius: 2,
-                  }}
-                >
-                  {e.image_url && (
-                    <Box
-                      component="img"
-                      src={e.image_url}
-                      alt={e.title}
+                return (
+                  <Paper
+                    key={e.id}
+                    variant="outlined"
+                    sx={{
+                      p: 2.5,
+                      borderLeft: `4px solid ${evColor}`,
+                      borderRadius: 2,
+                      position: 'relative',
+                    }}
+                  >
+                    {!e.is_archived && (onEditEvent || onDeleteEvent) && (
+                      <Box
+                        sx={{
+                          position: 'absolute',
+                          top: 8,
+                          right: 8,
+                          display: 'flex',
+                          gap: 0.5,
+                        }}
+                      >
+                        {onEditEvent && (
+                          <Tooltip title="Редактировать" arrow>
+                            <IconButton
+                              size="small"
+                              onClick={() => {
+                                onEditEvent(e);
+                                setModalDate(null);
+                              }}
+                              sx={{
+                                bgcolor: alpha(theme.palette.primary.main, 0.08),
+                                '&:hover': {
+                                  bgcolor: alpha(theme.palette.primary.main, 0.18),
+                                },
+                              }}
+                            >
+                              <EditIcon fontSize="small" sx={{ color: theme.palette.primary.main }} />
+                            </IconButton>
+                          </Tooltip>
+                        )}
+                        {onDeleteEvent && (
+                          <Tooltip title="Удалить" arrow>
+                            <IconButton
+                              size="small"
+                              onClick={() => {
+                                onDeleteEvent(e);
+                                setModalDate(null);
+                              }}
+                              sx={{
+                                bgcolor: alpha(theme.palette.error.main, 0.08),
+                                '&:hover': {
+                                  bgcolor: alpha(theme.palette.error.main, 0.18),
+                                },
+                              }}
+                            >
+                              <DeleteOutlineIcon fontSize="small" sx={{ color: theme.palette.error.main }} />
+                            </IconButton>
+                          </Tooltip>
+                        )}
+                      </Box>
+                    )}
+
+                    {e.is_archived && (
+                      <Chip
+                        label="Завершён"
+                        size="small"
+                        sx={{
+                          position: 'absolute',
+                          top: 8,
+                          right: 8,
+                          bgcolor: alpha(theme.palette.text.secondary, 0.12),
+                          fontWeight: 600,
+                          fontSize: '0.7rem',
+                        }}
+                      />
+                    )}
+
+                    {e.image_url && (
+                      <Box
+                        component="img"
+                        src={e.image_url}
+                        alt={e.title}
+                        sx={{
+                          width: '100%',
+                          borderRadius: 1.5,
+                          mb: 2,
+                          maxHeight: 200,
+                          objectFit: 'cover',
+                        }}
+                      />
+                    )}
+
+                    <Typography
+                      variant="h6"
+                      fontWeight={700}
                       sx={{
-                        width: '100%',
-                        borderRadius: 1.5,
-                        mb: 2,
-                        maxHeight: 200,
-                        objectFit: 'cover',
+                        lineHeight: 1.3,
+                        mb: 1,
+                        pr: (onEditEvent || onDeleteEvent) ? 8 : 0,
                       }}
-                    />
-                  )}
+                    >
+                      {e.title}
+                    </Typography>
 
-                  <Typography variant="h6" fontWeight={700} sx={{ lineHeight: 1.3, mb: 1 }}>
-                    {e.title}
-                  </Typography>
+                    <Stack direction="row" spacing={1} sx={{ mb: 1.5, flexWrap: 'wrap', gap: 0.5 }}>
+                      {e.discipline && (
+                        <Chip
+                          label={e.discipline}
+                          variant="outlined"
+                          avatar={
+                            iconUrl ? (
+                              <Box
+                                component="img"
+                                src={iconUrl}
+                                alt={e.discipline}
+                                sx={{ width: 22, height: 22, borderRadius: '50%', objectFit: 'cover' }}
+                              />
+                            ) : undefined
+                          }
+                          sx={{ borderColor: alpha(evColor, 0.3) }}
+                        />
+                      )}
+                      {e.start_time && (
+                        <Chip
+                          icon={<AccessTimeIcon />}
+                          label={`${normalizeTimeToHHmm(e.start_time)} МСК`}
+                          variant="outlined"
+                        />
+                      )}
+                      {e.prize && (
+                        <Chip
+                          icon={<EmojiEventsIcon />}
+                          label={e.prize}
+                          variant="outlined"
+                          sx={{ borderColor: alpha('#fbbf24', 0.3), color: '#fbbf24' }}
+                        />
+                      )}
+                    </Stack>
 
-                  <Stack direction="row" spacing={1} sx={{ mb: 1.5, flexWrap: 'wrap', gap: 0.5 }}>
-                    {e.discipline && (
-                      <Chip
-                        label={e.discipline}
-                        variant="outlined"
-                        avatar={
-                          iconUrl ? (
-                            <Box
-                              component="img"
-                              src={iconUrl}
-                              alt={e.discipline}
-                              sx={{ width: 16, height: 16, borderRadius: '50%' }}
-                            />
-                          ) : undefined
-                        }
-                        sx={{ borderColor: alpha(evColor, 0.3) }}
-                      />
+                    {e.description && (
+                      <>
+                        <Divider sx={{ my: 1.5, opacity: 0.3 }} />
+                        <Typography variant="body2" color="text.secondary">
+                          {e.description}
+                        </Typography>
+                      </>
                     )}
-                    {e.start_time && (
-                      <Chip
-                        icon={<AccessTimeIcon />}
-                        label={`${normalizeTimeToHHmm(e.start_time)} МСК`}
-                        variant="outlined"
-                      />
-                    )}
-                    {e.prize && (
-                      <Chip
-                        icon={<EmojiEventsIcon />}
-                        label={e.prize}
-                        variant="outlined"
-                        sx={{ borderColor: alpha('#fbbf24', 0.3), color: '#fbbf24' }}
-                      />
-                    )}
-                  </Stack>
 
-                  {e.description && (
-                    <>
-                      <Divider sx={{ my: 1.5, opacity: 0.3 }} />
-                      <Typography variant="body2" color="text.secondary">
-                        {e.description}
-                      </Typography>
-                    </>
-                  )}
+                    {e.is_archived && (
+                      <>
+                        <Divider sx={{ my: 1.5, opacity: 0.3 }} />
 
-                  <TournamentButton
-                    date={e.event_date.slice(0, 10)}
-                    startTime={e.start_time}
-                    regLink={regLink}
-                    watchUrl={e.watch_url}
-                  />
-                </Paper>
-              );
-            })}
-          </Stack>
-        )}
+                        {e.teams != null && e.teams > 0 && (
+                          <Stack direction="row" alignItems="center" spacing={0.5} sx={{ mb: 1 }}>
+                            <GroupsIcon fontSize="small" sx={{ color: 'text.secondary' }} />
+                            <Typography variant="body2" color="text.secondary">
+                              Участников: {e.teams}
+                            </Typography>
+                          </Stack>
+                        )}
+
+                        {(e.winner || e.winner_2nd || e.winner_3rd) && (
+                          <Stack spacing={0.5} sx={{ mb: 1.5 }}>
+                            {e.winner && (
+                              <Stack direction="row" alignItems="center" spacing={0.5}>
+                                <MilitaryTechIcon fontSize="small" sx={{ color: '#fbbf24' }} />
+                                <Typography variant="body2" fontWeight={700}>
+                                  {e.winner}
+                                </Typography>
+                              </Stack>
+                            )}
+                            {e.winner_2nd && (
+                              <Stack direction="row" alignItems="center" spacing={0.5}>
+                                <MilitaryTechIcon fontSize="small" sx={{ color: '#94a3b8' }} />
+                                <Typography variant="body2">
+                                  {e.winner_2nd}
+                                </Typography>
+                              </Stack>
+                            )}
+                            {e.winner_3rd && (
+                              <Stack direction="row" alignItems="center" spacing={0.5}>
+                                <MilitaryTechIcon fontSize="small" sx={{ color: '#b45309' }} />
+                                <Typography variant="body2">
+                                  {e.winner_3rd}
+                                </Typography>
+                              </Stack>
+                            )}
+                          </Stack>
+                        )}
+
+                        {e.watch_url && (
+                          <Button
+                            variant="outlined"
+                            startIcon={<PlayArrowIcon />}
+                            href={e.watch_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            fullWidth
+                            sx={{
+                              textTransform: 'none',
+                              fontWeight: 600,
+                              borderColor: alpha(evColor, 0.4),
+                              color: evColor,
+                              '&:hover': {
+                                borderColor: evColor,
+                                bgcolor: alpha(evColor, 0.08),
+                              },
+                            }}
+                          >
+                            Смотреть
+                          </Button>
+                        )}
+                      </>
+                    )}
+
+                  </Paper>
+                );
+              })}
+            </>
+          )}
+
+          {onAddEvent && modalDate && (
+            <Button
+              variant="outlined"
+              startIcon={<AddCircleOutlineIcon />}
+              onClick={() => {
+                onAddEvent(modalDate);
+                setModalDate(null);
+              }}
+              sx={{
+                borderStyle: 'dashed',
+                borderColor: alpha(theme.palette.primary.main, 0.3),
+                color: theme.palette.primary.main,
+                py: 1.5,
+                borderRadius: 2,
+                fontWeight: 600,
+                '&:hover': {
+                  borderStyle: 'dashed',
+                  borderColor: theme.palette.primary.main,
+                  bgcolor: alpha(theme.palette.primary.main, 0.06),
+                },
+              }}
+            >
+              Добавить событие
+            </Button>
+          )}
+        </Stack>
       </Modal>
     </>
   );

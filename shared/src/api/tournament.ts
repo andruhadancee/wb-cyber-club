@@ -2,7 +2,10 @@
 export interface Tournament {
   id: number;
   title: string;
+  discipline_id: number;
   discipline: string;
+  discipline_color: string | null;
+  discipline_logo_url: string | null;
   date: string;
   prize: string;
   teams: number;
@@ -11,9 +14,12 @@ export interface Tournament {
   custom_link: string | null;
   status: 'active' | 'finished';
   winner: string | null;
+  winner_2nd: string | null;
+  winner_3rd: string | null;
   watch_url: string | null;
   start_time: string | null;
   image_url: string | null;
+  has_bracket: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -22,12 +28,14 @@ export interface Tournament {
 export interface TournamentFormData {
   id?: number;
   title: string;
-  discipline: string;
+  disciplineId: number;
   date: string;
   prize: string;
   maxTeams: number;
   customLink?: string | null;
   winner?: string | null;
+  winner2nd?: string | null;
+  winner3rd?: string | null;
   watchUrl?: string | null;
   imageUrl?: string | null;
   startTime?: string | null;

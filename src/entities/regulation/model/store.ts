@@ -1,3 +1,4 @@
+import { useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { regulationApi } from '../api';
 import { queryKeys } from '@/shared/api/queryKeys';
@@ -46,13 +47,17 @@ export function useRegulationStore() {
   const updateMut = useUpdateRegulation();
   const removeMut = useRemoveRegulation();
 
+  const fetchAll = useCallback(async () => { await regulationsQuery.refetch(); }, [regulationsQuery.refetch]);
+  const createRegulation = useCallback(async (data: RegulationFormData) => { await createMut.mutateAsync(data); }, [createMut.mutateAsync]);
+  const updateRegulation = useCallback(async (id: number, data: RegulationFormData) => { await updateMut.mutateAsync({ id, data }); }, [updateMut.mutateAsync]);
+  const removeRegulation = useCallback(async (id: number) => { await removeMut.mutateAsync(id); }, [removeMut.mutateAsync]);
+
   return {
     regulations: regulationsQuery.data ?? [],
     isLoading: regulationsQuery.isLoading,
-
-    fetchAll: async () => { await regulationsQuery.refetch(); },
-    createRegulation: async (data: RegulationFormData) => { await createMut.mutateAsync(data); },
-    updateRegulation: async (id: number, data: RegulationFormData) => { await updateMut.mutateAsync({ id, data }); },
-    removeRegulation: async (id: number) => { await removeMut.mutateAsync(id); },
+    fetchAll,
+    createRegulation,
+    updateRegulation,
+    removeRegulation,
   };
 }

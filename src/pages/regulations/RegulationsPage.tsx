@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react';
 import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid';
@@ -10,19 +9,16 @@ import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import DescriptionIcon from '@mui/icons-material/Description';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import { useRegulationStore } from '@/entities/regulation/model';
+import { useDisciplineStore } from '@/entities/discipline/model';
 import { getDisciplineIconUrl } from '@/shared/lib/discipline-icons';
 import { Loader } from '@/shared/ui/loader/Loader';
 import { pageEntrance, staggerItem } from '@/shared/lib/animations';
 
 export function RegulationsPage() {
-  const { regulations, fetchAll, isLoading } = useRegulationStore();
-  const [ready, setReady] = useState(false);
+  const { regulations, isLoading } = useRegulationStore();
+  const { logosMap } = useDisciplineStore();
 
-  useEffect(() => {
-    fetchAll().finally(() => setReady(true));
-  }, [fetchAll]);
-
-  if (!ready || isLoading) return <Loader />;
+  if (isLoading) return <Loader />;
 
   return (
     <Box sx={pageEntrance}>
@@ -43,7 +39,7 @@ export function RegulationsPage() {
       ) : (
         <Grid container spacing={2.5}>
           {regulations.map((reg, i) => {
-            const iconUrl = getDisciplineIconUrl(reg.discipline_name);
+            const iconUrl = getDisciplineIconUrl(reg.discipline_name, logosMap[String(reg.discipline_id)] ?? logosMap[reg.discipline_name]);
             return (
               <Grid key={reg.id} size={{ xs: 12, sm: 6, md: 4 }}>
                 <Card sx={staggerItem(i)}>
@@ -64,10 +60,10 @@ export function RegulationsPage() {
                         component="img"
                         src={iconUrl}
                         alt={reg.discipline_name}
-                        sx={{ width: 44, height: 44, borderRadius: '50%', flexShrink: 0 }}
+                        sx={{ width: 56, height: 56, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
                       />
                     ) : (
-                      <PictureAsPdfIcon sx={{ fontSize: 44, color: 'error.main', flexShrink: 0 }} />
+                      <PictureAsPdfIcon sx={{ fontSize: 56, color: 'error.main', flexShrink: 0 }} />
                     )}
                     <CardContent sx={{ p: 0, '&:last-child': { pb: 0 }, flex: 1 }}>
                       <Typography fontWeight={600}>{reg.discipline_name}</Typography>

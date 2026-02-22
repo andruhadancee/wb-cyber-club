@@ -98,17 +98,24 @@ export async function generate(tournamentId: number, format: BracketFormat = 'si
   }
   const uniqueTeams = Array.from(uniqueMap.values());
 
-  if (uniqueTeams.length < 2) {
-    throw AppError.badRequest('Для генерации сетки нужно минимум 2 уникальные команды');
+  const isEmptyBracket = uniqueTeams.length === 0;
+  const teamCount = isEmptyBracket ? (tournament.teams || 0) : uniqueTeams.length;
+
+  if (teamCount < 2) {
+    throw AppError.badRequest(
+      isEmptyBracket
+        ? 'Укажите количество команд (поле "Участвовало команд") — минимум 2'
+        : 'Для генерации сетки нужно минимум 2 уникальные команды',
+    );
   }
-  if (format === 'double' && uniqueTeams.length < 3) {
+  if (format === 'double' && teamCount < 3) {
     throw AppError.badRequest('Для двойного выбывания нужно минимум 3 команды');
   }
 
   await prisma.bracketMatch.deleteMany({ where: { tournament_id: tournamentId } });
 
-  const shuffled = shuffle([...uniqueTeams]);
-  const size = nextPow2(shuffled.length);
+  const shuffled = isEmptyBracket ? [] : shuffle([...uniqueTeams]);
+  const size = nextPow2(teamCount);
   const ubRounds = Math.log2(size);
 
   const allMatches: MatchCreate[] = [];
@@ -119,24 +126,28 @@ export async function generate(tournamentId: number, format: BracketFormat = 'si
   // This prevents ghost matches and ensures BYEs don't cascade past R1.
   const r1Count = size / 2;
   for (let i = 0; i < r1Count; i++) {
-    const t1 = shuffled[i] ?? null;
-    const t2 = shuffled[i + r1Count] ?? null;
-    const isBye = !t1 || !t2;
-    const winner = isBye ? (t1 || t2) : null;
+    if (isEmptyBracket) {
+      allMatches.push(emptyMatch(tournamentId, 1, i, 'upper'));
+    } else {
+      const t1 = shuffled[i] ?? null;
+      const t2 = shuffled[i + r1Count] ?? null;
+      const isBye = !t1 || !t2;
+      const winner = isBye ? (t1 || t2) : null;
 
-    allMatches.push({
-      tournament_id: tournamentId,
-      round: 1,
-      position: i,
-      bracket_side: 'upper',
-      team1_id: t1?.id ?? null,
-      team1_name: t1?.name ?? null,
-      team2_id: t2?.id ?? null,
-      team2_name: t2?.name ?? null,
-      winner_id: winner?.id ?? null,
-      winner_name: winner?.name ?? null,
-      status: isBye ? 'completed' : 'pending',
-    });
+      allMatches.push({
+        tournament_id: tournamentId,
+        round: 1,
+        position: i,
+        bracket_side: 'upper',
+        team1_id: t1?.id ?? null,
+        team1_name: t1?.name ?? null,
+        team2_id: t2?.id ?? null,
+        team2_name: t2?.name ?? null,
+        winner_id: winner?.id ?? null,
+        winner_name: winner?.name ?? null,
+        status: isBye ? 'completed' : 'pending',
+      });
+    }
   }
 
   // UB rounds 2..n
@@ -177,14 +188,15 @@ export async function generate(tournamentId: number, format: BracketFormat = 'si
 
   await prisma.bracketMatch.createMany({ data: allMatches });
 
-  // Auto-advance BYE winners
-  const created = await prisma.bracketMatch.findMany({
-    where: { tournament_id: tournamentId },
-    orderBy: [{ bracket_side: 'asc' }, { round: 'asc' }, { position: 'asc' }],
-  }) as MatchRow[];
+  if (!isEmptyBracket) {
+    const created = await prisma.bracketMatch.findMany({
+      where: { tournament_id: tournamentId },
+      orderBy: [{ bracket_side: 'asc' }, { round: 'asc' }, { position: 'asc' }],
+    }) as MatchRow[];
 
-  await advanceByeWinners(created);
-  await autoCompleteByes(tournamentId);
+    await advanceByeWinners(created);
+    await autoCompleteByes(tournamentId);
+  }
 
   invalidateCache(tournamentId);
 

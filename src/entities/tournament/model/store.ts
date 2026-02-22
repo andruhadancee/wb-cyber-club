@@ -1,3 +1,4 @@
+import { useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { tournamentApi } from '../api';
 import { queryKeys } from '@/shared/api/queryKeys';
@@ -66,18 +67,21 @@ export function useTournamentStore() {
   const updateMut = useUpdateTournament();
   const removeMut = useRemoveTournament();
 
+  const fetchActive = useCallback(async () => { await activeQuery.refetch(); }, [activeQuery.refetch]);
+  const fetchPast = useCallback(async () => { await pastQuery.refetch(); }, [pastQuery.refetch]);
+  const createTournament = useCallback(async (data: TournamentFormData) => { await createMut.mutateAsync(data); }, [createMut.mutateAsync]);
+  const updateTournament = useCallback(async (data: TournamentFormData) => { await updateMut.mutateAsync(data); }, [updateMut.mutateAsync]);
+  const removeTournament = useCallback(async (id: number) => { await removeMut.mutateAsync(id); }, [removeMut.mutateAsync]);
+
   return {
     activeTournaments: activeQuery.data ?? [],
     pastTournaments: pastQuery.data ?? [],
     isLoading: activeQuery.isLoading || pastQuery.isLoading,
     error: activeQuery.error?.message || pastQuery.error?.message || null,
-
-    // Kept for backward compat — now just triggers refetch
-    fetchActive: async (_forceReload?: boolean) => { await activeQuery.refetch(); },
-    fetchPast: async (_forceReload?: boolean) => { await pastQuery.refetch(); },
-
-    createTournament: async (data: TournamentFormData) => { await createMut.mutateAsync(data); },
-    updateTournament: async (data: TournamentFormData) => { await updateMut.mutateAsync(data); },
-    removeTournament: async (id: number) => { await removeMut.mutateAsync(id); },
+    fetchActive,
+    fetchPast,
+    createTournament,
+    updateTournament,
+    removeTournament,
   };
 }

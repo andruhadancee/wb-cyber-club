@@ -1,7 +1,8 @@
+import { useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { teamApi } from '../api';
 import { queryKeys } from '@/shared/api/queryKeys';
-import type { TeamFormData, TeamsByTournament } from '../types';
+import type { TeamFormData, TeamsByTournament, BulkCreateTeamData } from '../types';
 
 // ─── Queries ───
 
@@ -47,6 +48,17 @@ export function useRemoveTeam() {
   });
 }
 
+export function useBulkCreateTeams() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: BulkCreateTeamData) => teamApi.bulkCreate(data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.teams.all });
+      qc.invalidateQueries({ queryKey: queryKeys.tournaments.all });
+    },
+  });
+}
+
 // ─── Backward-compatible hook (replaces useTeamStore) ───
 
 export function useTeamStore() {
@@ -55,14 +67,18 @@ export function useTeamStore() {
   const updateMut = useUpdateTeam();
   const removeMut = useRemoveTeam();
 
+  const fetchAll = useCallback(async (_status?: string) => { await teamsQuery.refetch(); }, [teamsQuery.refetch]);
+  const createTeam = useCallback(async (data: TeamFormData) => { await createMut.mutateAsync(data); }, [createMut.mutateAsync]);
+  const updateTeam = useCallback(async (data: TeamFormData) => { await updateMut.mutateAsync(data); }, [updateMut.mutateAsync]);
+  const removeTeam = useCallback(async (id: number) => { await removeMut.mutateAsync(id); }, [removeMut.mutateAsync]);
+
   return {
     teamsByTournament: teamsQuery.data ?? {},
     isLoading: teamsQuery.isLoading,
     error: teamsQuery.error?.message || null,
-
-    fetchAll: async (_status?: string) => { await teamsQuery.refetch(); },
-    createTeam: async (data: TeamFormData) => { await createMut.mutateAsync(data); },
-    updateTeam: async (data: TeamFormData) => { await updateMut.mutateAsync(data); },
-    removeTeam: async (id: number) => { await removeMut.mutateAsync(id); },
+    fetchAll,
+    createTeam,
+    updateTeam,
+    removeTeam,
   };
 }

@@ -15,19 +15,23 @@ import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import { CountdownTimer } from '@/features/countdown-timer/CountdownTimer';
 import { TournamentButton } from '@/features/tournament-button/TournamentButton';
 import { getDisciplineIconUrl } from '@/shared/lib/discipline-icons';
+import { getDisciplineColor } from '@/shared/lib/discipline-colors';
 import { formatDateForDisplay, normalizeTimeToHHmm } from '@/shared/lib/date';
 import { staggerItem } from '@/shared/lib/animations';
+import { alpha } from '@mui/material/styles';
 import type { Tournament } from '@/entities/tournament/types';
 
 interface Props {
   tournament: Tournament;
   regLink: string;
+  logoUrl?: string | null;
   index?: number;
 }
 
-export const TournamentCard = memo(function TournamentCard({ tournament, regLink, index = 0 }: Props) {
+export const TournamentCard = memo(function TournamentCard({ tournament, regLink, logoUrl, index = 0 }: Props) {
   const navigate = useNavigate();
-  const iconUrl = getDisciplineIconUrl(tournament.discipline);
+  const iconUrl = getDisciplineIconUrl(tournament.discipline, logoUrl ?? tournament.discipline_logo_url);
+  const discColor = getDisciplineColor(tournament.discipline, tournament.discipline_color);
 
   const handleBracketClick = () => {
     navigate(`/tournament/${tournament.id}/bracket`);
@@ -36,29 +40,31 @@ export const TournamentCard = memo(function TournamentCard({ tournament, regLink
   return (
     <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column', ...staggerItem(index) }}>
       <CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column', p: 2.5 }}>
-        {/* Header: Discipline chip */}
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
           <Chip
             label={tournament.discipline}
-            color="primary"
             variant="outlined"
             avatar={
               iconUrl ? (
-                <Box component="img" src={iconUrl} alt={tournament.discipline} sx={{ width: 18, height: 18, borderRadius: '50%' }} />
+                <Box component="img" src={iconUrl} alt={tournament.discipline} sx={{ width: 24, height: 24, borderRadius: '50%', objectFit: 'cover' }} />
               ) : undefined
             }
+            sx={{
+              borderColor: alpha(discColor, 0.4),
+              color: discColor,
+              fontWeight: 600,
+              '& .MuiChip-label': { color: discColor },
+            }}
           />
           <CountdownTimer dateStr={tournament.date} startTime={tournament.start_time} />
         </Box>
 
-        {/* Title */}
         <Typography variant="h6" component="h2" fontWeight={700} sx={{ mb: 2, lineHeight: 1.3 }}>
           {tournament.title}
         </Typography>
 
         <Divider sx={{ mb: 2, opacity: 0.5 }} />
 
-        {/* Info rows */}
         <Stack spacing={1.5} sx={{ flex: 1 }}>
           <InfoRow icon={<CalendarTodayIcon />} label="Дата">
             {formatDateForDisplay(tournament.date)}
@@ -85,7 +91,6 @@ export const TournamentCard = memo(function TournamentCard({ tournament, regLink
           </InfoRow>
         </Stack>
 
-        {/* Bracket + Registration buttons */}
         <Box sx={{ display: 'flex', gap: 1, mt: 2, mb: 1 }}>
           <Button
             variant="outlined"

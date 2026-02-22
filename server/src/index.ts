@@ -11,6 +11,7 @@ import { errorHandler } from './middleware/error-handler';
 import { apiLimiter, mutationLimiter } from './middleware/rate-limiter';
 import apiRouter from './routes';
 import prisma from './prisma';
+import { autoArchiveExpired } from './services/tournament.service';
 
 const app = express();
 
@@ -57,6 +58,14 @@ if (config.DEV_AUTH === 'true') {
 // ── API routes ──
 app.use('/api', apiRouter);
 
+// ── Serve uploaded files ──
+const uploadsPath = path.join(process.cwd(), 'uploads');
+app.use('/uploads', express.static(uploadsPath, {
+  maxAge: '7d',
+  etag: true,
+  lastModified: true,
+}));
+
 // ── Serve static frontend (production) ──
 const distPath = path.join(process.cwd(), 'dist');
 app.use(express.static(distPath, {
@@ -73,6 +82,24 @@ app.get('*', (_req, res) => {
 // ── Error handler (must be last) ──
 app.use(errorHandler);
 
+// ── Auto-archive scheduler ──
+const AUTO_ARCHIVE_INTERVAL_MS = 60_000;
+let archiveTimer: ReturnType<typeof setInterval> | null = null;
+
+function startAutoArchive(): void {
+  autoArchiveExpired().catch((err) =>
+    console.error('[auto-archive] initial run error:', err),
+  );
+
+  archiveTimer = setInterval(() => {
+    autoArchiveExpired().catch((err) =>
+      console.error('[auto-archive] error:', err),
+    );
+  }, AUTO_ARCHIVE_INTERVAL_MS);
+
+  console.log(`[auto-archive] Scheduler started (every ${AUTO_ARCHIVE_INTERVAL_MS / 1000}s)`);
+}
+
 // ── Start ──
 let server: Server;
 
@@ -88,11 +115,19 @@ async function start(): Promise<void> {
   server = app.listen(config.PORT, () => {
     console.log(`Server running on http://localhost:${config.PORT} [${config.NODE_ENV}]`);
   });
+
+  startAutoArchive();
 }
 
 // ── Graceful shutdown ──
 async function shutdown(signal: string): Promise<void> {
   console.log(`[SHUTDOWN] ${signal} received`);
+
+  if (archiveTimer) {
+    clearInterval(archiveTimer);
+    archiveTimer = null;
+    console.log('[SHUTDOWN] Auto-archive scheduler stopped');
+  }
 
   if (server) {
     server.close(() => {

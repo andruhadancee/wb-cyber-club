@@ -1,1 +1,1 @@
-export { useTeamStore } from './store';
+export { useTeamStore, useBulkCreateTeams } from './store';

@@ -5,7 +5,7 @@ export const createCalendarEventSchema = z.object({
   description: z.string().nullish(),
   eventDate: z.string().min(1),
   imageUrl: z.string().nullish(),
-  discipline: z.string().nullish(),
+  disciplineId: z.number().int().positive().nullish(),
   prize: z.string().nullish(),
   maxTeams: z.number().int().positive().nullish(),
   registrationLink: z.string().nullish(),

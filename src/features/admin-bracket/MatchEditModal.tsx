@@ -254,7 +254,8 @@ export function MatchEditModal({ match, tournamentId, onClose, onSaved }: MatchE
                           sx={{ height: 20, fontSize: '0.65rem', opacity: 0.8 }} />
                       )}
                       {isAssigned && !isEliminated && (
-                        <Chip label="В матче"                          sx={{ height: 20, fontSize: '0.65rem', opacity: 0.7 }} />
+                        <Chip label="В матче"
+                          sx={{ height: 20, fontSize: '0.65rem', opacity: 0.7 }} />
                       )}
                     </Box>
                   </Box>
@@ -313,7 +314,8 @@ export function MatchEditModal({ match, tournamentId, onClose, onSaved }: MatchE
                           sx={{ height: 20, fontSize: '0.65rem', opacity: 0.8 }} />
                       )}
                       {isAssigned && !isEliminated && (
-                        <Chip label="В матче"                          sx={{ height: 20, fontSize: '0.65rem', opacity: 0.7 }} />
+                        <Chip label="В матче"
+                          sx={{ height: 20, fontSize: '0.65rem', opacity: 0.7 }} />
                       )}
                     </Box>
                   </Box>

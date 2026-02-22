@@ -1,5 +1,5 @@
 import prisma from '../prisma';
-import { parseRussianDateToISO } from '../date-utils';
+import { parseRussianDateToISO, todayMSK } from '../date-utils';
 
 interface ArchiveResult {
   message: string;
@@ -17,7 +17,7 @@ export async function autoArchive(): Promise<ArchiveResult> {
     return { message: 'Нет турниров для архивирования', archived: 0 };
   }
 
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = todayMSK();
   let archivedCount = 0;
 
   for (const tournament of tournaments) {

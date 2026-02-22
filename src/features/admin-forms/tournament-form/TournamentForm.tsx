@@ -8,6 +8,8 @@ import MenuItem from '@mui/material/MenuItem';
 import Stack from '@mui/material/Stack';
 import Button from '@mui/material/Button';
 import Box from '@mui/material/Box';
+import InputAdornment from '@mui/material/InputAdornment';
+import Typography from '@mui/material/Typography';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { TimePicker } from '@mui/x-date-pickers/TimePicker';
 import { useDisciplineStore } from '@/entities/discipline/model';
@@ -16,7 +18,7 @@ import { normalizeTimeToHHmm } from '@/shared/lib/date';
 
 const schema = z.object({
   title: z.string().min(1, 'Обязательное поле'),
-  discipline: z.string().min(1, 'Выберите дисциплину'),
+  disciplineId: z.coerce.number().min(1, 'Выберите дисциплину'),
   date: z.string().min(1, 'Укажите дату'),
   prize: z.string().min(1, 'Укажите призовой фонд'),
   maxTeams: z.coerce.number().min(2, 'Минимум 2').optional(),
@@ -26,6 +28,8 @@ const schema = z.object({
   watchUrl: z.string().optional(),
   imageUrl: z.string().optional(),
   winner: z.string().optional(),
+  winner2nd: z.string().optional(),
+  winner3rd: z.string().optional(),
   status: z.enum(['active', 'finished']),
 });
 
@@ -68,7 +72,7 @@ export function TournamentForm({ tournament, isPast = false, onSubmit, onCancel,
     defaultValues: tournament
       ? {
           title: tournament.title,
-          discipline: tournament.discipline,
+          disciplineId: tournament.discipline_id,
           date: parseDate(tournament.date),
           prize: tournament.prize,
           maxTeams: tournament.max_teams,
@@ -78,6 +82,8 @@ export function TournamentForm({ tournament, isPast = false, onSubmit, onCancel,
           watchUrl: tournament.watch_url || '',
           imageUrl: tournament.image_url || '',
           winner: tournament.winner || '',
+          winner2nd: tournament.winner_2nd || '',
+          winner3rd: tournament.winner_3rd || '',
           status: isPast ? 'finished' : 'active',
         }
       : {
@@ -85,7 +91,7 @@ export function TournamentForm({ tournament, isPast = false, onSubmit, onCancel,
           maxTeams: 16,
           teams: 0,
           title: '',
-          discipline: '',
+          disciplineId: 0,
           date: '',
           prize: '',
           customLink: '',
@@ -93,6 +99,8 @@ export function TournamentForm({ tournament, isPast = false, onSubmit, onCancel,
           watchUrl: '',
           imageUrl: '',
           winner: '',
+          winner2nd: '',
+          winner3rd: '',
         },
   });
 
@@ -114,13 +122,22 @@ export function TournamentForm({ tournament, isPast = false, onSubmit, onCancel,
         />
 
         <Controller
-          name="discipline"
+          name="disciplineId"
           control={control}
           render={({ field }) => (
-            <TextField {...field} select label="Дисциплина" required error={!!errors.discipline} helperText={errors.discipline?.message}>
+            <TextField
+              {...field}
+              value={field.value || ''}
+              onChange={(e) => field.onChange(Number(e.target.value))}
+              select
+              label="Дисциплина"
+              required
+              error={!!errors.disciplineId}
+              helperText={errors.disciplineId?.message}
+            >
               <MenuItem value="">Выберите</MenuItem>
               {disciplines.map((d) => (
-                <MenuItem key={d.id} value={d.name}>{d.name}</MenuItem>
+                <MenuItem key={d.id} value={d.id}>{d.name}</MenuItem>
               ))}
             </TextField>
           )}
@@ -224,13 +241,68 @@ export function TournamentForm({ tournament, isPast = false, onSubmit, onCancel,
         />
 
         {isPast && (
-          <Controller
-            name="winner"
-            control={control}
-            render={({ field }) => (
-              <TextField {...field} label="Победитель" placeholder="Название команды" autoComplete="off" />
-            )}
-          />
+          <Stack spacing={2}>
+            <Typography variant="subtitle2" color="text.secondary" sx={{ fontWeight: 600 }}>
+              Призовые места
+            </Typography>
+            <Controller
+              name="winner"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  label="1-е место"
+                  placeholder="Название команды"
+                  autoComplete="off"
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <Typography sx={{ fontSize: '1.1rem' }}>🥇</Typography>
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              )}
+            />
+            <Controller
+              name="winner2nd"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  label="2-е место"
+                  placeholder="Название команды"
+                  autoComplete="off"
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <Typography sx={{ fontSize: '1.1rem' }}>🥈</Typography>
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              )}
+            />
+            <Controller
+              name="winner3rd"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  label="3-е место"
+                  placeholder="Название команды"
+                  autoComplete="off"
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <Typography sx={{ fontSize: '1.1rem' }}>🥉</Typography>
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              )}
+            />
+          </Stack>
         )}
 
         <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end', pt: 1 }}>

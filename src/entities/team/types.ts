@@ -1,1 +1,1 @@
-export type { Team, TeamFormData, TeamsByTournament } from '@shared/api/team';
+export type { Team, TeamFormData, TeamsByTournament, BulkCreateTeamData } from '@shared/api/team';

@@ -11,7 +11,7 @@ import { useDisciplineStore } from '@/entities/discipline/model';
 import type { Regulation } from '@/entities/regulation/types';
 
 const schema = z.object({
-  discipline_name: z.string().min(1, 'Выберите дисциплину'),
+  disciplineId: z.coerce.number().min(1, 'Выберите дисциплину'),
   regulation_name: z.string().optional(),
   pdf_url: z.string().url('Введите корректный URL').min(1, 'Обязательное поле'),
 });
@@ -40,7 +40,7 @@ export function RegulationForm({ regulation, onSubmit, onCancel, onDirtyChange }
     resolver: zodResolver(schema),
     defaultValues: regulation
       ? {
-          discipline_name: regulation.discipline_name,
+          disciplineId: regulation.discipline_id,
           regulation_name: regulation.regulation_name || '',
           pdf_url: regulation.pdf_url,
         }
@@ -57,13 +57,22 @@ export function RegulationForm({ regulation, onSubmit, onCancel, onDirtyChange }
     <form onSubmit={handleSubmit(handleFormSubmit)}>
       <Stack spacing={2.5} sx={{ pt: 1 }}>
         <Controller
-          name="discipline_name"
+          name="disciplineId"
           control={control}
           render={({ field }) => (
-            <TextField {...field} select label="Дисциплина" required error={!!errors.discipline_name} helperText={errors.discipline_name?.message}>
+            <TextField
+              {...field}
+              value={field.value || ''}
+              onChange={(e) => field.onChange(Number(e.target.value))}
+              select
+              label="Дисциплина"
+              required
+              error={!!errors.disciplineId}
+              helperText={errors.disciplineId?.message}
+            >
               <MenuItem value="">Выберите</MenuItem>
               {disciplines.map((d) => (
-                <MenuItem key={d.id} value={d.name}>{d.name}</MenuItem>
+                <MenuItem key={d.id} value={d.id}>{d.name}</MenuItem>
               ))}
             </TextField>
           )}

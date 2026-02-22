@@ -16,7 +16,6 @@ import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { alpha, useTheme } from '@mui/material/styles';
 import { useBracketStore } from '@/entities/bracket/model';
-import { useDisciplineStore } from '@/entities/discipline/model';
 import { useTeamStore } from '@/entities/team/model';
 import { BracketView } from '@/shared/ui/bracket/BracketView';
 import { MatchEditModal } from './MatchEditModal';
@@ -36,11 +35,10 @@ export function AdminBracketTab({ tournaments }: AdminBracketTabProps) {
   const [formatDialogOpen, setFormatDialogOpen] = useState(false);
 
   const { matches, isLoading, hasBracket, fetchByTournament, generate, deleteBracket } = useBracketStore();
-  const { colorsMap } = useDisciplineStore();
   const { fetchAll: fetchTeams } = useTeamStore();
 
   const selectedTournament = tournaments.find((t) => t.id === selectedId);
-  const accentColor = selectedTournament ? (colorsMap[selectedTournament.discipline] ?? undefined) : undefined;
+  const accentColor = selectedTournament?.discipline_color ?? undefined;
 
   const handleSelectTournament = useCallback(
     (tournamentId: number) => {
@@ -124,7 +122,7 @@ export function AdminBracketTab({ tournaments }: AdminBracketTabProps) {
           </Select>
         </FormControl>
 
-        {selectedId && (
+        {selectedId && !(selectedTournament?.status === 'finished' && !hasBracket) && (
           <>
             <Button
               variant="contained"
@@ -164,6 +162,11 @@ export function AdminBracketTab({ tournaments }: AdminBracketTabProps) {
 
       {selectedId && !isLoading && (
         <>
+          {selectedTournament?.status === 'finished' && !hasBracket && (
+            <Alert severity="warning" sx={{ mb: 2 }}>
+              У архивного турнира нет сетки. Сетка доступна только для турниров с зарегистрированными командами.
+            </Alert>
+          )}
           {hasBracket && (
             <Alert severity="info" sx={{ mb: 2 }}>
               Нажмите на матч, чтобы установить счёт и победителя. Победитель автоматически продвигается дальше.

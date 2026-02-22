@@ -10,6 +10,7 @@ import socialRouter from './social';
 import bracketsRouter from './brackets';
 import archiveRouter from './archive';
 import healthRouter from './health';
+import uploadRouter from './upload';
 
 const router = Router();
 
@@ -23,5 +24,6 @@ router.use('/links', linksRouter);
 router.use('/regulations', regulationsRouter);
 router.use('/social', socialRouter);
 router.use('/archive-auto', archiveRouter);
+router.use('/upload', uploadRouter);
 
 export default router;

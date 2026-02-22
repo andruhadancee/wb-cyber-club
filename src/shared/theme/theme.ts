@@ -1,4 +1,4 @@
-import { createTheme, type ThemeOptions, alpha } from '@mui/material/styles';
+import { createTheme, alpha } from '@mui/material/styles';
 
 // ── Palette ──
 const PRIMARY = '#7c3aed';
@@ -7,9 +7,28 @@ const PRIMARY_DARK = '#5b21b6';
 const SECONDARY = '#ec4899';
 const SECONDARY_LIGHT = '#f472b6';
 
-const commonOptions: ThemeOptions = {
+export const darkTheme = createTheme({
+  cssVariables: false,
   breakpoints: {
     values: { xs: 0, sm: 600, md: 900, lg: 1200, xl: 1920 },
+  },
+  palette: {
+    mode: 'dark',
+    primary: { main: PRIMARY, light: PRIMARY_LIGHT, dark: PRIMARY_DARK },
+    secondary: { main: SECONDARY, light: SECONDARY_LIGHT, dark: '#be185d' },
+    background: {
+      default: '#09090b',
+      paper: '#111113',
+    },
+    text: {
+      primary: '#fafafa',
+      secondary: '#a1a1aa',
+    },
+    divider: alpha('#fff', 0.06),
+    action: {
+      hover: alpha(PRIMARY, 0.08),
+      selected: alpha(PRIMARY, 0.12),
+    },
   },
   typography: {
     fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
@@ -36,10 +55,12 @@ const commonOptions: ThemeOptions = {
       styleOverrides: {
         html: {
           scrollBehavior: 'smooth',
+          backgroundColor: '#09090b',
+          colorScheme: 'dark',
         },
         body: {
           transition: 'background-color 0.3s ease, color 0.3s ease',
-          backgroundColor: 'transparent !important',
+          backgroundColor: 'transparent',
         },
         '::selection': {
           backgroundColor: alpha(PRIMARY, 0.3),
@@ -98,11 +119,41 @@ const commonOptions: ThemeOptions = {
         disableElevation: true,
       },
     },
+    MuiPaper: {
+      styleOverrides: {
+        root: {
+          backgroundImage: 'none',
+        },
+        outlined: {
+          borderRadius: 14,
+          borderColor: alpha('#fff', 0.06),
+          backgroundColor: '#151517',
+        },
+      },
+    },
     MuiCard: {
       styleOverrides: {
         root: {
           borderRadius: 16,
+          border: `1px solid ${alpha('#fff', 0.06)}`,
+          backgroundColor: '#18181b',
+          backgroundImage: 'linear-gradient(145deg, #1a1a1e 0%, #111113 100%)',
           transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+          '&:hover': {
+            borderColor: alpha(PRIMARY, 0.3),
+            boxShadow: `0 8px 30px ${alpha(PRIMARY, 0.15)}, 0 0 0 1px ${alpha(PRIMARY, 0.1)}`,
+            transform: 'translateY(-4px)',
+          },
+        },
+      },
+    },
+    MuiAppBar: {
+      styleOverrides: {
+        root: {
+          backgroundColor: 'rgba(9,9,11,0.85)',
+          backgroundImage: 'none',
+          backdropFilter: 'blur(20px) saturate(180%)',
+          borderBottom: `1px solid ${alpha('#fff', 0.06)}`,
         },
       },
     },
@@ -110,6 +161,8 @@ const commonOptions: ThemeOptions = {
       styleOverrides: {
         paper: {
           borderRadius: 20,
+          backgroundColor: '#18181b',
+          border: `1px solid ${alpha('#fff', 0.08)}`,
           backgroundImage: 'none',
         },
       },
@@ -148,13 +201,6 @@ const commonOptions: ThemeOptions = {
         },
       },
     },
-    MuiPaper: {
-      styleOverrides: {
-        outlined: {
-          borderRadius: 14,
-        },
-      },
-    },
     MuiFab: {
       styleOverrides: {
         root: {
@@ -166,6 +212,9 @@ const commonOptions: ThemeOptions = {
       styleOverrides: {
         root: {
           borderRadius: '14px !important',
+          border: `1px solid ${alpha('#fff', 0.06)}`,
+          backgroundColor: '#151517',
+          backgroundImage: 'none',
           '&:before': { display: 'none' },
           overflow: 'hidden',
         },
@@ -175,89 +224,6 @@ const commonOptions: ThemeOptions = {
       styleOverrides: {
         root: {
           transition: 'background-color 0.15s ease',
-        },
-      },
-    },
-  },
-};
-
-export const darkTheme = createTheme({
-  ...commonOptions,
-  palette: {
-    mode: 'dark',
-    primary: { main: PRIMARY, light: PRIMARY_LIGHT, dark: PRIMARY_DARK },
-    secondary: { main: SECONDARY, light: SECONDARY_LIGHT, dark: '#be185d' },
-    background: {
-      default: '#09090b',
-      paper: '#111113',
-    },
-    text: {
-      primary: '#fafafa',
-      secondary: '#a1a1aa',
-    },
-    divider: alpha('#fff', 0.06),
-    action: {
-      hover: alpha(PRIMARY, 0.08),
-      selected: alpha(PRIMARY, 0.12),
-    },
-  },
-  components: {
-    ...commonOptions.components,
-    MuiCard: {
-      styleOverrides: {
-        root: {
-          borderRadius: 16,
-          border: `1px solid ${alpha('#fff', 0.06)}`,
-          background: `linear-gradient(145deg, ${alpha('#18181b', 0.8)} 0%, ${alpha('#09090b', 0.9)} 100%)`,
-          backdropFilter: 'blur(10px)',
-          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-          '&:hover': {
-            borderColor: alpha(PRIMARY, 0.3),
-            boxShadow: `0 8px 30px ${alpha(PRIMARY, 0.15)}, 0 0 0 1px ${alpha(PRIMARY, 0.1)}`,
-            transform: 'translateY(-4px)',
-          },
-        },
-      },
-    },
-    MuiAppBar: {
-      styleOverrides: {
-        root: {
-          background: alpha('#09090b', 0.8),
-          backdropFilter: 'blur(20px) saturate(180%)',
-          borderBottom: `1px solid ${alpha('#fff', 0.06)}`,
-        },
-      },
-    },
-    MuiDialog: {
-      styleOverrides: {
-        paper: {
-          borderRadius: 20,
-          background: '#18181b',
-          border: `1px solid ${alpha('#fff', 0.08)}`,
-          backgroundImage: 'none',
-          backdropFilter: 'none',
-        },
-      },
-    },
-    MuiPaper: {
-      styleOverrides: {
-        outlined: {
-          borderRadius: 14,
-          borderColor: alpha('#fff', 0.06),
-          background: alpha('#18181b', 0.5),
-          backdropFilter: 'blur(12px)',
-        },
-      },
-    },
-    MuiAccordion: {
-      styleOverrides: {
-        root: {
-          borderRadius: '14px !important',
-          border: `1px solid ${alpha('#fff', 0.06)}`,
-          background: alpha('#18181b', 0.5),
-          backdropFilter: 'blur(12px)',
-          '&:before': { display: 'none' },
-          overflow: 'hidden',
         },
       },
     },

@@ -14,6 +14,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    volumes:
+      - uploads_local:/app/uploads
     restart: unless-stopped
     networks:
       - local
@@ -43,3 +45,4 @@ networks:
 
 volumes:
   pgdata_dev:
+  uploads_local:

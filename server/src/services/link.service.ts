@@ -1,31 +1,36 @@
 import prisma from '../prisma';
 import { cacheInvalidate } from '../cache';
-import type { RegistrationLinks } from '@wb/shared';
 
 function invalidateCache(): void {
   cacheInvalidate('route:/api/links');
 }
 
-export async function getAll(): Promise<RegistrationLinks> {
+/** Returns Record<disciplineId (string), link> */
+export async function getAll(): Promise<Record<string, string>> {
   const rows = await prisma.registrationLink.findMany({
-    orderBy: { discipline: 'asc' },
+    include: { discipline: { select: { id: true, name: true } } },
+    orderBy: { discipline_id: 'asc' },
   });
 
-  const links: RegistrationLinks = {};
+  const links: Record<string, string> = {};
   for (const row of rows) {
-    links[row.discipline] = row.link;
+    links[String(row.discipline_id)] = row.link;
   }
   return links;
 }
 
-export async function save(links: RegistrationLinks): Promise<void> {
+/** Accepts Record<disciplineId (string), link> */
+export async function save(links: Record<string, string>): Promise<void> {
   const entries = Object.entries(links).filter(([, link]) => link?.trim());
 
   await prisma.$transaction(async (tx) => {
     await tx.registrationLink.deleteMany();
     if (entries.length > 0) {
       await tx.registrationLink.createMany({
-        data: entries.map(([discipline, link]) => ({ discipline, link: link.trim() })),
+        data: entries.map(([disciplineId, link]) => ({
+          discipline_id: parseInt(disciplineId, 10),
+          link: link.trim(),
+        })),
       });
     }
   });

@@ -1,6 +1,7 @@
 /** Regulation entity as returned by the API */
 export interface Regulation {
   id: number;
+  discipline_id: number;
   discipline_name: string;
   regulation_name: string | null;
   pdf_url: string;
@@ -11,7 +12,7 @@ export interface Regulation {
 /** Form data for creating / editing a regulation */
 export interface RegulationFormData {
   id?: number;
-  discipline_name: string;
+  disciplineId: number;
   regulation_name?: string | null;
   pdf_url: string;
 }

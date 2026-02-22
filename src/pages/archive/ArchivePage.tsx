@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, memo } from 'react';
+import { useState, useMemo, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
@@ -15,23 +15,18 @@ import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import HistoryIcon from '@mui/icons-material/History';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import { useTournamentStore } from '@/entities/tournament/model';
-import { useDisciplineStore } from '@/entities/discipline/model';
 import { DisciplineFilter } from '@/features/discipline-filter/DisciplineFilter';
 import { formatDateForDisplay, parseTournamentDate } from '@/shared/lib/date';
 import { getDisciplineIconUrl } from '@/shared/lib/discipline-icons';
+import { getDisciplineColor } from '@/shared/lib/discipline-colors';
+import { alpha } from '@mui/material/styles';
 import { Loader } from '@/shared/ui/loader/Loader';
 import { pageEntrance, staggerItem } from '@/shared/lib/animations';
 import type { Tournament } from '@/entities/tournament/types';
 
 export function ArchivePage() {
-  const { pastTournaments, fetchPast, isLoading } = useTournamentStore();
-  const { fetchAll: fetchDisciplines } = useDisciplineStore();
+  const { pastTournaments, isLoading } = useTournamentStore();
   const [selected, setSelected] = useState('all');
-  const [ready, setReady] = useState(false);
-
-  useEffect(() => {
-    Promise.all([fetchPast(), fetchDisciplines()]).finally(() => setReady(true));
-  }, [fetchPast, fetchDisciplines]);
 
   const sorted = useMemo(() => {
     let list = [...pastTournaments];
@@ -48,7 +43,7 @@ export function ArchivePage() {
 
   const available = [...new Set(pastTournaments.map((t) => t.discipline))];
 
-  if (!ready || isLoading) return <Loader />;
+  if (isLoading) return <Loader />;
 
   return (
     <Box sx={pageEntrance}>
@@ -81,7 +76,8 @@ const ArchiveCard = memo(function ArchiveCard({ tournament, index = 0 }: { tourn
   const navigate = useNavigate();
   const watchUrl = tournament.watch_url?.trim() || null;
   const imageUrl = tournament.image_url?.trim() || null;
-  const iconUrl = getDisciplineIconUrl(tournament.discipline);
+  const iconUrl = getDisciplineIconUrl(tournament.discipline, tournament.discipline_logo_url);
+  const discColor = getDisciplineColor(tournament.discipline, tournament.discipline_color);
 
   return (
     <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column', ...staggerItem(index) }}>
@@ -99,10 +95,17 @@ const ArchiveCard = memo(function ArchiveCard({ tournament, index = 0 }: { tourn
           variant="outlined"
           avatar={
             iconUrl ? (
-              <Box component="img" src={iconUrl} alt={tournament.discipline} sx={{ width: 18, height: 18, borderRadius: '50%' }} />
+              <Box component="img" src={iconUrl} alt={tournament.discipline} sx={{ width: 24, height: 24, borderRadius: '50%', objectFit: 'cover' }} />
             ) : undefined
           }
-          sx={{ alignSelf: 'flex-start', mb: 1.5 }}
+          sx={{
+            alignSelf: 'flex-start',
+            mb: 1.5,
+            borderColor: alpha(discColor, 0.4),
+            color: discColor,
+            fontWeight: 600,
+            '& .MuiChip-label': { color: discColor },
+          }}
         />
 
         <Typography variant="h6" fontWeight={700} sx={{ mb: 1.5, lineHeight: 1.3 }}>
@@ -126,36 +129,57 @@ const ArchiveCard = memo(function ArchiveCard({ tournament, index = 0 }: { tourn
           </Typography>
         </Stack>
 
-        {tournament.winner && (
-          <Chip
-            icon={<EmojiEventsIcon />}
-            label={tournament.winner}
-            color="warning"
-            sx={{ alignSelf: 'flex-start', mt: 1.5, fontWeight: 600 }}
-          />
+        {(tournament.winner || tournament.winner_2nd || tournament.winner_3rd) && (
+          <Stack spacing={0.75} sx={{ mt: 1.5 }}>
+            {tournament.winner && (
+              <Chip
+                icon={<EmojiEventsIcon />}
+                label={tournament.winner}
+                sx={{ alignSelf: 'flex-start', fontWeight: 600, bgcolor: alpha('#fbbf24', 0.15), color: '#fbbf24', border: `1px solid ${alpha('#fbbf24', 0.3)}` }}
+              />
+            )}
+            {tournament.winner_2nd && (
+              <Chip
+                label={`2-е: ${tournament.winner_2nd}`}
+                variant="outlined"
+                sx={{ alignSelf: 'flex-start', fontWeight: 600, borderColor: alpha('#a0a0a0', 0.4), color: '#a0a0a0' }}
+              />
+            )}
+            {tournament.winner_3rd && (
+              <Chip
+                label={`3-е: ${tournament.winner_3rd}`}
+                variant="outlined"
+                sx={{ alignSelf: 'flex-start', fontWeight: 600, borderColor: alpha('#cd7f32', 0.4), color: '#cd7f32' }}
+              />
+            )}
+          </Stack>
         )}
 
-        <Box sx={{ display: 'flex', gap: 1, mt: 2, flexWrap: 'wrap' }}>
-          <Button
-            variant="outlined"
-            startIcon={<AccountTreeIcon />}
-            onClick={() => navigate(`/tournament/${tournament.id}/bracket`)}
-            sx={{ textTransform: 'none', fontSize: '0.78rem' }}
-          >
-            Сетка
-          </Button>
-          {watchUrl && (
-            <Button
-              variant="outlined"
-              startIcon={<PlayArrowIcon />}
-              href={watchUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Смотреть
-            </Button>
-          )}
-        </Box>
+        {(tournament.has_bracket || watchUrl) && (
+          <Box sx={{ display: 'flex', gap: 1, mt: 2, flexWrap: 'wrap' }}>
+            {tournament.has_bracket && (
+              <Button
+                variant="outlined"
+                startIcon={<AccountTreeIcon />}
+                onClick={() => navigate(`/tournament/${tournament.id}/bracket`)}
+                sx={{ textTransform: 'none', fontSize: '0.78rem' }}
+              >
+                Сетка
+              </Button>
+            )}
+            {watchUrl && (
+              <Button
+                variant="outlined"
+                startIcon={<PlayArrowIcon />}
+                href={watchUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Смотреть
+              </Button>
+            )}
+          </Box>
+        )}
       </CardContent>
     </Card>
   );

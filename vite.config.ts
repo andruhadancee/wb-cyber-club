@@ -9,10 +9,27 @@ export default defineConfig({
       '@': path.resolve(__dirname, 'src'),
       '@shared': path.resolve(__dirname, 'shared/src'),
     },
+    dedupe: [
+      'react', 'react-dom',
+      '@emotion/react', '@emotion/styled', '@emotion/cache',
+      '@mui/material', '@mui/system', '@mui/styled-engine',
+      '@mui/x-date-pickers',
+    ],
+  },
+  optimizeDeps: {
+    include: [
+      'react', 'react-dom', 'react/jsx-runtime',
+      '@emotion/react', '@emotion/styled', '@emotion/cache',
+      '@mui/material', '@mui/system',
+    ],
   },
   server: {
     proxy: {
       '/api': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+      },
+      '/uploads': {
         target: 'http://localhost:3000',
         changeOrigin: true,
       },

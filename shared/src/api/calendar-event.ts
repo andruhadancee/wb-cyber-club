@@ -5,7 +5,10 @@ export interface CalendarEvent {
   description: string | null;
   event_date: string;
   image_url: string | null;
+  discipline_id: number | null;
   discipline: string | null;
+  discipline_color: string | null;
+  discipline_logo_url: string | null;
   prize: string | null;
   max_teams: number | null;
   registration_link: string | null;
@@ -15,6 +18,12 @@ export interface CalendarEvent {
   watch_url: string | null;
   created_at: string;
   updated_at: string;
+  /** Present for archived tournament entries */
+  is_archived?: boolean;
+  winner?: string | null;
+  winner_2nd?: string | null;
+  winner_3rd?: string | null;
+  teams?: number | null;
 }
 
 /** Form data for creating / editing a calendar event */
@@ -24,7 +33,7 @@ export interface CalendarEventFormData {
   eventDate: string;
   description?: string | null;
   imageUrl?: string | null;
-  discipline?: string | null;
+  disciplineId?: number | null;
   prize?: string | null;
   maxTeams?: number | null;
   registrationLink?: string | null;

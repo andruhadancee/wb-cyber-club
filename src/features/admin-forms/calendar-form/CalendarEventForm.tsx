@@ -14,12 +14,10 @@ import { useDisciplineStore } from '@/entities/discipline/model';
 import type { CalendarEvent } from '@/entities/calendar-event/types';
 import { normalizeTimeToHHmm } from '@/shared/lib/date';
 
-// test
-
 const schema = z.object({
   title: z.string().min(1, 'Обязательное поле'),
   eventDate: z.string().min(1, 'Укажите дату'),
-  discipline: z.string().optional(),
+  disciplineId: z.coerce.number().optional(),
   startTime: z.string().optional(),
   prize: z.string().optional(),
   maxTeams: z.coerce.number().optional(),
@@ -57,7 +55,7 @@ export function CalendarEventForm({ event, defaultDate, onSubmit, onCancel, onDi
       ? {
           title: event.title,
           eventDate: (event.event_date || '').slice(0, 10),
-          discipline: event.discipline || '',
+          disciplineId: event.discipline_id || undefined,
           startTime: normalizeTimeToHHmm(event.start_time),
           prize: event.prize || '',
           maxTeams: event.max_teams || undefined,
@@ -88,13 +86,19 @@ export function CalendarEventForm({ event, defaultDate, onSubmit, onCancel, onDi
         />
 
         <Controller
-          name="discipline"
+          name="disciplineId"
           control={control}
           render={({ field }) => (
-            <TextField {...field} select label="Дисциплина">
+            <TextField
+              {...field}
+              value={field.value || ''}
+              onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+              select
+              label="Дисциплина"
+            >
               <MenuItem value="">Без дисциплины</MenuItem>
               {disciplines.map((d) => (
-                <MenuItem key={d.id} value={d.name}>{d.name}</MenuItem>
+                <MenuItem key={d.id} value={d.id}>{d.name}</MenuItem>
               ))}
             </TextField>
           )}
@@ -174,14 +178,6 @@ export function CalendarEventForm({ event, defaultDate, onSubmit, onCancel, onDi
           control={control}
           render={({ field }) => (
             <TextField {...field} label="Ссылка на регистрацию" placeholder="https://forms.gle/..." />
-          )}
-        />
-
-        <Controller
-          name="customLink"
-          control={control}
-          render={({ field }) => (
-            <TextField {...field} label="Пользовательская ссылка" placeholder="https://..." />
           )}
         />
 

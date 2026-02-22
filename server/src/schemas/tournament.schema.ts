@@ -1,6 +1,10 @@
 import { z } from 'zod';
+import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc.js';
 
-/** Strip base64 data URIs and empty strings → null; keep valid URLs */
+dayjs.extend(utc);
+
+/** Strip base64 data URIs and empty strings -> null; keep valid URLs */
 const safeUrl = z
   .string()
   .nullish()
@@ -10,21 +14,15 @@ const safeUrl = z
     return v.trim();
   });
 
-/** Accept "HH:mm" or ISO date string (e.g. "1970-01-01T18:00:00.000Z") */
+/** Accept "HH:mm" or ISO date string (e.g. "1970-01-01T18:00:00.000Z") -> normalize to "HH:mm" */
 const timeString = z
   .string()
   .transform((v) => {
     if (!v) return v;
     const trimmed = v.trim();
-    // Already in HH:mm
     if (/^\d{1,2}:\d{2}$/.test(trimmed)) return trimmed;
-    // ISO date string — extract HH:mm in UTC
-    const d = new Date(trimmed);
-    if (!isNaN(d.getTime())) {
-      const hh = String(d.getUTCHours()).padStart(2, '0');
-      const mm = String(d.getUTCMinutes()).padStart(2, '0');
-      return `${hh}:${mm}`;
-    }
+    const parsed = dayjs.utc(trimmed);
+    if (parsed.isValid()) return parsed.format('HH:mm');
     return trimmed;
   })
   .refine((v) => !v || /^\d{1,2}:\d{2}$/.test(v.trim()), { message: 'Формат времени: HH:mm' })
@@ -32,13 +30,15 @@ const timeString = z
 
 export const createTournamentSchema = z.object({
   title: z.string().min(1),
-  discipline: z.string().min(1),
+  disciplineId: z.number().int().positive(),
   date: z.string().min(1),
   prize: z.string().min(1),
   maxTeams: z.number().int().positive(),
   customLink: safeUrl,
   status: z.string().default('active'),
   winner: z.string().nullish(),
+  winner2nd: z.string().nullish(),
+  winner3rd: z.string().nullish(),
   watchUrl: safeUrl,
   description: z.string().nullish(),
   imageUrl: safeUrl,

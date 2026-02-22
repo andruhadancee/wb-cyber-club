@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { disciplineApi } from '../api';
 import { queryKeys } from '@/shared/api/queryKeys';
@@ -18,8 +18,8 @@ export function useDisciplines() {
 export function useCreateDiscipline() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ name, color }: { name: string; color?: string | null }) =>
-      disciplineApi.create(name, color),
+    mutationFn: ({ name, color, logo_url }: { name: string; color?: string | null; logo_url?: string | null }) =>
+      disciplineApi.create(name, color, logo_url),
     onSuccess: () => { qc.invalidateQueries({ queryKey: queryKeys.disciplines.all }); },
   });
 }
@@ -27,7 +27,7 @@ export function useCreateDiscipline() {
 export function useUpdateDiscipline() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<Pick<Discipline, 'name' | 'color'>> }) =>
+    mutationFn: ({ id, data }: { id: number; data: Partial<Pick<Discipline, 'name' | 'color' | 'logo_url'>> }) =>
       disciplineApi.update(id, data),
     onSuccess: () => { qc.invalidateQueries({ queryKey: queryKeys.disciplines.all }); },
   });
@@ -53,18 +53,35 @@ export function useDisciplineStore() {
 
   const colorsMap = useMemo(() => {
     const map: Record<string, string | null> = {};
-    disciplines.forEach((d) => { map[d.name] = d.color; });
+    disciplines.forEach((d) => {
+      map[d.name] = d.color;
+      map[String(d.id)] = d.color;
+    });
     return map;
   }, [disciplines]);
+
+  const logosMap = useMemo(() => {
+    const map: Record<string, string | null> = {};
+    disciplines.forEach((d) => {
+      map[d.name] = d.logo_url;
+      map[String(d.id)] = d.logo_url;
+    });
+    return map;
+  }, [disciplines]);
+
+  const fetchAll = useCallback(async () => { await disciplinesQuery.refetch(); }, [disciplinesQuery.refetch]);
+  const createDiscipline = useCallback(async (name: string, color?: string | null, logo_url?: string | null) => { await createMut.mutateAsync({ name, color, logo_url }); }, [createMut.mutateAsync]);
+  const updateDiscipline = useCallback(async (id: number, data: Partial<Pick<Discipline, 'name' | 'color' | 'logo_url'>>) => { await updateMut.mutateAsync({ id, data }); }, [updateMut.mutateAsync]);
+  const removeDiscipline = useCallback(async (id: number) => { await removeMut.mutateAsync(id); }, [removeMut.mutateAsync]);
 
   return {
     disciplines,
     colorsMap,
+    logosMap,
     isLoading: disciplinesQuery.isLoading,
-
-    fetchAll: async () => { await disciplinesQuery.refetch(); },
-    createDiscipline: async (name: string, color?: string | null) => { await createMut.mutateAsync({ name, color }); },
-    updateDiscipline: async (id: number, data: Partial<Pick<Discipline, 'name' | 'color'>>) => { await updateMut.mutateAsync({ id, data }); },
-    removeDiscipline: async (id: number) => { await removeMut.mutateAsync(id); },
+    fetchAll,
+    createDiscipline,
+    updateDiscipline,
+    removeDiscipline,
   };
 }
