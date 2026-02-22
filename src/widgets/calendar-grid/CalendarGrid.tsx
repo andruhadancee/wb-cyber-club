@@ -493,7 +493,6 @@ export const CalendarGrid = memo(function CalendarGrid({
                       <AppImage
                         src={e.image_url}
                         alt={e.title}
-                        height={160}
                       />
                     )}
 
