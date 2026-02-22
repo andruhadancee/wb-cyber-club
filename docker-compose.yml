@@ -45,6 +45,7 @@ services:
       - S3_REGION=${S3_REGION:-ru-1}
       - S3_ACCESS_KEY=${S3_ACCESS_KEY:-}
       - S3_SECRET_KEY=${S3_SECRET_KEY:-}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
     depends_on:
       redis:
         condition: service_healthy

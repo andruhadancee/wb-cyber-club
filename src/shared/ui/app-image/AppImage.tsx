@@ -19,8 +19,8 @@ interface Props {
 export function AppImage({
   src,
   alt,
-  height = 160,
-  objectFit = 'cover',
+  height = 180,
+  objectFit = 'contain',
   borderRadius = 0,
   sx,
 }: Props) {
@@ -48,7 +48,7 @@ export function AppImage({
   }
 
   return (
-    <Box sx={{ position: 'relative', borderRadius, overflow: 'hidden', ...sx }}>
+    <Box sx={{ position: 'relative', borderRadius, overflow: 'hidden', bgcolor: 'rgba(0,0,0,0.3)', ...sx }}>
       {status === 'loading' && (
         <Skeleton
           variant="rectangular"

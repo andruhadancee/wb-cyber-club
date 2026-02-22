@@ -14,8 +14,8 @@ services:
       - PORT=3001
       - NODE_ENV=development
       - DEV_AUTH=true
-      - DEV_USER=dev
-      - DEV_PASS=dev123
+      - DEV_USER=${DEV_USER:-dev}
+      - DEV_PASS=${DEV_PASS:-dev123}
       - SENTRY_DSN=${SENTRY_DSN:-}
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
       - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
@@ -24,6 +24,7 @@ services:
       - S3_REGION=${S3_REGION:-ru-1}
       - S3_ACCESS_KEY=${S3_ACCESS_KEY:-}
       - S3_SECRET_KEY=${S3_SECRET_KEY:-}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
     depends_on:
       redis-dev:
         condition: service_healthy

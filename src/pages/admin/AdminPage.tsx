@@ -28,7 +28,6 @@ import { pageEntrance } from '@/shared/lib/animations';
 import { VideoBackground } from '@/shared/ui/video-background/VideoBackground';
 
 const ADMIN_KEY = 'wbcyber_admin';
-const ADMIN_PASSWORD = 'admin123';
 
 function AdminContent() {
   const navigate = useNavigate();
@@ -49,14 +48,26 @@ function AdminContent() {
     }
   }, []);
 
-  const handleLogin = useCallback(() => {
-    if (password === ADMIN_PASSWORD) {
-      localStorage.setItem(ADMIN_KEY, 'true');
-      setAuthorized(true);
-      setShowLogin(false);
-    } else {
-      showError('Неверный пароль');
-      setPassword('');
+  const handleLogin = useCallback(async () => {
+    try {
+      const res = await fetch('/api/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ password }),
+      });
+
+      if (res.ok) {
+        localStorage.setItem(ADMIN_KEY, 'true');
+        setAuthorized(true);
+        setShowLogin(false);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        showError((data as { error?: string }).error || 'Неверный пароль');
+        setPassword('');
+      }
+    } catch {
+      showError('Ошибка соединения с сервером');
     }
   }, [password]);
 

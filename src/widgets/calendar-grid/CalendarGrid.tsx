@@ -27,6 +27,7 @@ import { useInterval } from '@/shared/hooks/useInterval';
 import { Modal } from '@/shared/ui/modal/Modal';
 import { AppImage } from '@/shared/ui/app-image/AppImage';
 import { DisciplineAvatar } from '@/shared/ui/discipline-avatar/DisciplineAvatar';
+import { TournamentButton } from '@/features/tournament-button/TournamentButton';
 import type { CalendarEvent } from '@/entities/calendar-event/types';
 import type { Discipline } from '@/entities/discipline/types';
 
@@ -658,7 +659,16 @@ export const CalendarGrid = memo(function CalendarGrid({
                       </>
                     )}
 
-                    {e.watch_url && (
+                    {!e.is_archived && (
+                      <TournamentButton
+                        date={e.event_date}
+                        startTime={e.start_time}
+                        regLink={e.registration_link || e.custom_link || '#'}
+                        watchUrl={e.watch_url}
+                      />
+                    )}
+
+                    {e.is_archived && e.watch_url && (
                       <Button
                         variant="outlined"
                         startIcon={<PlayArrowIcon />}
@@ -678,7 +688,7 @@ export const CalendarGrid = memo(function CalendarGrid({
                           },
                         }}
                       >
-                        Смотреть
+                        Смотреть запись
                       </Button>
                     )}
                     </Box>

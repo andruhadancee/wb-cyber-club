@@ -11,10 +11,12 @@ import bracketsRouter from './brackets';
 import archiveRouter from './archive';
 import healthRouter from './health';
 import uploadRouter from './upload';
+import adminRouter from './admin';
 
 const router = Router();
 
 router.use('/health', healthRouter);
+router.use('/admin', adminRouter);
 router.use('/tournaments', tournamentsRouter);
 router.use('/brackets', bracketsRouter);
 router.use('/teams', teamsRouter);
