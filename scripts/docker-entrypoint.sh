@@ -3,18 +3,9 @@ set -e
 
 SCHEMA="server/prisma/schema.prisma"
 
-echo "[entrypoint] Parsing DATABASE_URL..."
-PGHOST=$(echo "$DATABASE_URL" | sed -n 's|.*@\([^:]*\):.*|\1|p')
-PGPORT=$(echo "$DATABASE_URL" | sed -n 's|.*:\([0-9]*\)/.*|\1|p')
-PGDB=$(echo "$DATABASE_URL" | sed -n 's|.*/\([^?]*\).*|\1|p')
-PGUSER=$(echo "$DATABASE_URL" | sed -n 's|.*://\([^:]*\):.*|\1|p')
-PGPASS=$(echo "$DATABASE_URL" | sed -n 's|.*://[^:]*:\([^@]*\)@.*|\1|p')
-
-echo "[entrypoint] Connecting to $PGHOST:$PGPORT/$PGDB as $PGUSER"
-
-# Wait for postgres
+echo "[entrypoint] Waiting for PostgreSQL..."
 for i in $(seq 1 30); do
-  if PGPASSWORD="$PGPASS" psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d "$PGDB" -c "SELECT 1" > /dev/null 2>&1; then
+  if psql "$DATABASE_URL" -c "SELECT 1" > /dev/null 2>&1; then
     echo "[entrypoint] PostgreSQL ready."
     break
   fi
@@ -26,31 +17,29 @@ done
 MIGRATION_FILE="./scripts/migrate-discipline-id.sql"
 if [ -f "$MIGRATION_FILE" ]; then
   echo "[entrypoint] ══ Applying custom SQL migration ══"
-  PGPASSWORD="$PGPASS" psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d "$PGDB" \
-    -f "$MIGRATION_FILE" 2>&1
+  psql "$DATABASE_URL" -f "$MIGRATION_FILE" 2>&1 || true
   echo "[entrypoint] ══ Custom SQL migration done ══"
 fi
 
 # ── 2. Verify critical columns exist ──
 echo "[entrypoint] Verifying schema..."
-CHECK=$(PGPASSWORD="$PGPASS" psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d "$PGDB" -tAc \
-  "SELECT count(*) FROM information_schema.columns WHERE table_name='tournaments' AND column_name='discipline_id'")
+CHECK=$(psql "$DATABASE_URL" -tAc \
+  "SELECT count(*) FROM information_schema.columns WHERE table_name='tournaments' AND column_name='discipline_id'" 2>/dev/null || echo "0")
 echo "[entrypoint] tournaments.discipline_id exists: $CHECK"
 
-OLD_COL=$(PGPASSWORD="$PGPASS" psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d "$PGDB" -tAc \
-  "SELECT count(*) FROM information_schema.columns WHERE table_name='tournaments' AND column_name='discipline' AND data_type='character varying'")
+OLD_COL=$(psql "$DATABASE_URL" -tAc \
+  "SELECT count(*) FROM information_schema.columns WHERE table_name='tournaments' AND column_name='discipline' AND data_type='character varying'" 2>/dev/null || echo "0")
 echo "[entrypoint] tournaments.discipline (old varchar): $OLD_COL"
 
-# Force drop old column if still present
 if [ "$OLD_COL" = "1" ]; then
   echo "[entrypoint] Force dropping old tournaments.discipline column..."
-  PGPASSWORD="$PGPASS" psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d "$PGDB" -c \
-    "DROP INDEX IF EXISTS idx_tournaments_discipline; ALTER TABLE tournaments DROP COLUMN IF EXISTS discipline;" 2>&1
+  psql "$DATABASE_URL" -c \
+    "DROP INDEX IF EXISTS idx_tournaments_discipline; ALTER TABLE tournaments DROP COLUMN IF EXISTS discipline;" 2>&1 || true
 fi
 
 # ── 3. Baseline resolve (one-time) ──
-HAS_TABLE=$(PGPASSWORD="$PGPASS" psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d "$PGDB" \
-  -tAc "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name='_prisma_migrations')" 2>/dev/null || echo "f")
+HAS_TABLE=$(psql "$DATABASE_URL" -tAc \
+  "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name='_prisma_migrations')" 2>/dev/null || echo "f")
 
 if [ "$HAS_TABLE" = "f" ] || [ "$HAS_TABLE" = "" ]; then
   echo "[entrypoint] First run — marking baseline as applied..."
