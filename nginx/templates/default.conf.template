@@ -1,6 +1,6 @@
 # ── Upstream с keepalive ──
 upstream app_backend {
-    server app:3000;
+    server 127.0.0.1:3000;
     keepalive 16;
 }
 
