@@ -14,8 +14,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1.0'
-          memory: 256M
+          cpus: '0.5'
+          memory: 128M
 
   # ── Certbot (SSL-сертификаты Let's Encrypt) ──
   certbot:
@@ -64,8 +64,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '2.0'
-          memory: 768M
+          cpus: '0.9'
+          memory: 512M
 
   # ── Redis ──
   redis:
@@ -81,8 +81,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.5'
-          memory: 128M
+          cpus: '0.25'
+          memory: 64M
     command: >
       redis-server
       --maxmemory 64mb
