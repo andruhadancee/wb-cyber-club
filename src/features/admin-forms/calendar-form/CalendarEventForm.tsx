@@ -1,7 +1,7 @@
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useEffect } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import dayjs, { type Dayjs } from 'dayjs';
 import TextField from '@mui/material/TextField';
 import MenuItem from '@mui/material/MenuItem';
@@ -11,6 +11,7 @@ import Box from '@mui/material/Box';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { TimePicker } from '@mui/x-date-pickers/TimePicker';
 import { useDisciplineStore } from '@/entities/discipline/model';
+import { ImageUpload } from '@/shared/ui/image-upload/ImageUpload';
 import type { CalendarEvent } from '@/entities/calendar-event/types';
 import { normalizeTimeToHHmm } from '@/shared/lib/date';
 
@@ -68,10 +69,22 @@ export function CalendarEventForm({ event, defaultDate, onSubmit, onCancel, onDi
       : { eventDate: defaultDate || '' },
   });
 
-  useEffect(() => { onDirtyChange?.(isDirty); }, [isDirty, onDirtyChange]);
+  const [imageUrl, setImageUrl] = useState<string | null>(event?.image_url || null);
+  const [imageChanged, setImageChanged] = useState(false);
+
+  const handleImageChange = useCallback((url: string | null) => {
+    setImageUrl(url);
+    setImageChanged(true);
+  }, []);
+
+  useEffect(() => { onDirtyChange?.(isDirty || imageChanged); }, [isDirty, imageChanged, onDirtyChange]);
 
   const handleFormSubmit = async (data: FormValues) => {
-    await onSubmit({ ...data, id: event?.id });
+    await onSubmit({
+      ...data,
+      imageUrl: imageChanged ? (imageUrl || '') : data.imageUrl,
+      id: event?.id,
+    });
   };
 
   return (
@@ -165,12 +178,11 @@ export function CalendarEventForm({ event, defaultDate, onSubmit, onCancel, onDi
           )}
         />
 
-        <Controller
-          name="imageUrl"
-          control={control}
-          render={({ field }) => (
-            <TextField {...field} label="URL изображения" placeholder="https://..." />
-          )}
+        <ImageUpload
+          value={imageUrl}
+          onChange={handleImageChange}
+          label="Изображение события"
+          hint="JPEG, PNG, WebP — до 2 МБ"
         />
 
         <Controller

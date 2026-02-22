@@ -68,7 +68,7 @@ export function DisciplineForm({ discipline, onSubmit, onCancel, onDirtyChange }
   }, []);
 
   const handleRemoveLogo = useCallback(() => {
-    if (logoUrl && logoUrl.startsWith('/uploads/')) {
+    if (logoUrl) {
       disciplineApi.deleteLogo(logoUrl).catch(() => {});
     }
     setLogoUrl(null);

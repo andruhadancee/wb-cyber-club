@@ -19,6 +19,7 @@
     "prisma:push": "prisma db push --schema=server/prisma/schema.prisma"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.995.0",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@g-loot/react-tournament-brackets": "^1.0.31-rc",

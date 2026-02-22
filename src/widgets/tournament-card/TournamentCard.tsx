@@ -12,6 +12,7 @@ import GroupsIcon from '@mui/icons-material/Groups';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import { CountdownTimer } from '@/features/countdown-timer/CountdownTimer';
 import { TournamentButton } from '@/features/tournament-button/TournamentButton';
 import { getDisciplineIconUrl } from '@/shared/lib/discipline-icons';
@@ -100,6 +101,19 @@ export const TournamentCard = memo(function TournamentCard({ tournament, regLink
           >
             Сетка
           </Button>
+          {tournament.watch_url && (
+            <Button
+              variant="outlined"
+              color="success"
+              startIcon={<PlayArrowIcon />}
+              href={tournament.watch_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              sx={{ textTransform: 'none', flex: 1, fontSize: '0.78rem' }}
+            >
+              Смотреть
+            </Button>
+          )}
         </Box>
 
         <TournamentButton

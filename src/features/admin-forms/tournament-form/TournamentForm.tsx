@@ -1,7 +1,7 @@
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useEffect } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import dayjs, { type Dayjs } from 'dayjs';
 import TextField from '@mui/material/TextField';
 import MenuItem from '@mui/material/MenuItem';
@@ -13,6 +13,7 @@ import Typography from '@mui/material/Typography';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { TimePicker } from '@mui/x-date-pickers/TimePicker';
 import { useDisciplineStore } from '@/entities/discipline/model';
+import { ImageUpload } from '@/shared/ui/image-upload/ImageUpload';
 import type { Tournament } from '@/entities/tournament/types';
 import { normalizeTimeToHHmm } from '@/shared/lib/date';
 
@@ -104,10 +105,22 @@ export function TournamentForm({ tournament, isPast = false, onSubmit, onCancel,
         },
   });
 
-  useEffect(() => { onDirtyChange?.(isDirty); }, [isDirty, onDirtyChange]);
+  const [imageUrl, setImageUrl] = useState<string | null>(tournament?.image_url || null);
+  const [imageChanged, setImageChanged] = useState(false);
+
+  const handleImageChange = useCallback((url: string | null) => {
+    setImageUrl(url);
+    setImageChanged(true);
+  }, []);
+
+  useEffect(() => { onDirtyChange?.(isDirty || imageChanged); }, [isDirty, imageChanged, onDirtyChange]);
 
   const handleFormSubmit = async (data: FormValues) => {
-    await onSubmit({ ...data, id: tournament?.id });
+    await onSubmit({
+      ...data,
+      imageUrl: imageChanged ? (imageUrl || '') : data.imageUrl,
+      id: tournament?.id,
+    });
   };
 
   return (
@@ -232,12 +245,11 @@ export function TournamentForm({ tournament, isPast = false, onSubmit, onCancel,
           )}
         />
 
-        <Controller
-          name="imageUrl"
-          control={control}
-          render={({ field }) => (
-            <TextField {...field} label="URL изображения" placeholder="https://..." helperText="Для карточки в архиве" />
-          )}
+        <ImageUpload
+          value={imageUrl}
+          onChange={handleImageChange}
+          label="Изображение турнира"
+          hint="JPEG, PNG, WebP — до 2 МБ"
         />
 
         {isPast && (
