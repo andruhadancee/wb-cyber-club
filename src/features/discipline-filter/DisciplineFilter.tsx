@@ -11,6 +11,7 @@ interface Props {
   selected: string;
   onSelect: (discipline: string) => void;
   availableDisciplines?: string[];
+  colored?: boolean;
 }
 
 const CHIP_HEIGHT = 44;
