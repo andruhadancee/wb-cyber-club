@@ -40,7 +40,8 @@ COPY --from=build /app/server/dist ./server/dist
 COPY --from=build /app/dist ./dist
 
 COPY scripts/ ./scripts/
-RUN find ./scripts -type f -exec sed -i 's/\r$//' {} + && chmod +x ./scripts/docker-entrypoint.sh
+RUN find ./scripts -type f -exec sed -i 's/\r$//' {} + \
+    && chmod +x ./scripts/docker-entrypoint.sh ./scripts/migrate.sh
 
 EXPOSE 3000
 

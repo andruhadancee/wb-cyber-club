@@ -41,7 +41,6 @@ jobs:
           IMAGE=ghcr.io/${{ github.repository }}/dev:latest
           DOCKER_BUILDKIT=1 docker build -t "$IMAGE" .
           docker push "$IMAGE"
-          echo "Image pushed: $IMAGE"
 
       - name: Deploy on server
         uses: appleboy/ssh-action@v1
@@ -54,35 +53,31 @@ jobs:
             set -e
 
             IMAGE=ghcr.io/${{ github.repository }}/dev:latest
+            COMPOSE="-f docker-compose.staging.yml"
 
             # DNS fallback
             grep -q "8.8.8.8" /etc/resolv.conf || echo "nameserver 8.8.8.8" >> /etc/resolv.conf
             grep -q "1.1.1.1" /etc/resolv.conf || echo "nameserver 1.1.1.1" >> /etc/resolv.conf
 
-            # Login to GHCR
+            # Login & pull
             echo "${{ secrets.GH_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-
-            # Pull with retry
             for i in 1 2 3; do
               echo "Pull attempt $i..."
               docker pull "$IMAGE" && break
-              echo "Attempt $i failed, retrying in 15s..."
               sleep 15
             done
-
-            # Tag for compose
             docker tag "$IMAGE" wb-cyber-club-dev:latest
 
-            # Update compose files
+            # Update repo
             if [ ! -d /opt/wb-cyber-club-dev ]; then
               git clone -b mvp-2 https://${{ secrets.GH_TOKEN }}@github.com/andruhadancee/wb-cyber-club.git /opt/wb-cyber-club-dev
             fi
-
             cd /opt/wb-cyber-club-dev
             git fetch origin mvp-2 && git reset --hard origin/mvp-2
 
-            docker compose -f docker-compose.staging.yml stop app-dev || true
-            docker compose -f docker-compose.staging.yml up -d app-dev
+            # Restart app (migrations run inside entrypoint)
+            docker compose $COMPOSE stop app-dev || true
+            docker compose $COMPOSE up -d app-dev
             docker image prune -f
 
             echo "Dev deploy completed at $(date)"

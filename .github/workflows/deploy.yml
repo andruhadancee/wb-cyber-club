@@ -58,19 +58,17 @@ jobs:
             grep -q "1.1.1.1" /etc/resolv.conf || echo "nameserver 1.1.1.1" >> /etc/resolv.conf
 
             echo "${{ secrets.GH_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-
             for i in 1 2 3; do
               echo "Pull attempt $i..."
               docker pull "$IMAGE" && break
-              echo "Attempt $i failed, retrying in 15s..."
               sleep 15
             done
-
             docker tag "$IMAGE" wb-cyber-club:latest
 
             cd /opt/wb-cyber-club
             git fetch origin mvp && git reset --hard origin/mvp
 
+            # Restart app (migrations run inside entrypoint)
             docker compose stop app || true
             docker compose up -d app
             docker image prune -f
