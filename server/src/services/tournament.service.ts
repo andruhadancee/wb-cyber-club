@@ -37,10 +37,10 @@ export async function getAll(status?: string) {
   const tournaments = await prisma.tournament.findMany({
     where,
     include: INCLUDE_DISCIPLINE,
-    orderBy: { date: isArchive ? 'desc' : 'asc' },
+    orderBy: { date: 'desc' },
   });
 
-  const direction = isArchive ? -1 : 1;
+  const direction = -1;
   tournaments.sort((a: NonNullable<TournamentWithDiscipline>, b: NonNullable<TournamentWithDiscipline>) => {
     const dateA = dayjs(parseDateForSort(a.date));
     const dateB = dayjs(parseDateForSort(b.date));
