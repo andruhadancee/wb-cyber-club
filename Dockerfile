@@ -21,6 +21,8 @@ RUN npx tsc -p server/tsconfig.json && echo '{"type":"commonjs"}' > server/dist/
 # Stage 2: Production (lightweight)
 FROM node:20-alpine
 
+RUN apk add --no-cache postgresql-client
+
 WORKDIR /app
 
 COPY package.json package-lock.json* ./
@@ -37,7 +39,7 @@ COPY server/prisma ./server/prisma
 COPY --from=build /app/server/dist ./server/dist
 COPY --from=build /app/dist ./dist
 
-COPY scripts/docker-entrypoint.sh ./scripts/docker-entrypoint.sh
+COPY scripts/ ./scripts/
 RUN sed -i 's/\r$//' ./scripts/docker-entrypoint.sh && chmod +x ./scripts/docker-entrypoint.sh
 
 EXPOSE 3000
