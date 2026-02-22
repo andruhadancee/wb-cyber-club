@@ -483,12 +483,20 @@ export const CalendarGrid = memo(function CalendarGrid({
                     key={e.id}
                     variant="outlined"
                     sx={{
-                      p: 2,
                       borderLeft: `4px solid ${evColor}`,
                       borderRadius: 2,
-                      position: 'relative',
+                      overflow: 'hidden',
                     }}
                   >
+                    {e.image_url && (
+                      <AppImage
+                        src={e.image_url}
+                        alt={e.title}
+                        height={160}
+                      />
+                    )}
+
+                    <Box sx={{ p: 2, position: 'relative' }}>
                     {!e.is_archived && (onEditEvent || onDeleteEvent) && (
                       <Box
                         sx={{
@@ -552,16 +560,6 @@ export const CalendarGrid = memo(function CalendarGrid({
                           fontWeight: 600,
                           fontSize: '0.7rem',
                         }}
-                      />
-                    )}
-
-                    {e.image_url && (
-                      <AppImage
-                        src={e.image_url}
-                        alt={e.title}
-                        height={140}
-                        borderRadius={1}
-                        sx={{ mb: 1.5 }}
                       />
                     )}
 
@@ -657,32 +655,33 @@ export const CalendarGrid = memo(function CalendarGrid({
                             )}
                           </Stack>
                         )}
-
-                        {e.watch_url && (
-                          <Button
-                            variant="outlined"
-                            startIcon={<PlayArrowIcon />}
-                            href={e.watch_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            fullWidth
-                            sx={{
-                              textTransform: 'none',
-                              fontWeight: 600,
-                              borderColor: alpha(evColor, 0.4),
-                              color: evColor,
-                              '&:hover': {
-                                borderColor: evColor,
-                                bgcolor: alpha(evColor, 0.08),
-                              },
-                            }}
-                          >
-                            Смотреть
-                          </Button>
-                        )}
                       </>
                     )}
 
+                    {e.watch_url && (
+                      <Button
+                        variant="outlined"
+                        startIcon={<PlayArrowIcon />}
+                        href={e.watch_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        fullWidth
+                        sx={{
+                          mt: 1.5,
+                          textTransform: 'none',
+                          fontWeight: 600,
+                          borderColor: alpha(evColor, 0.4),
+                          color: evColor,
+                          '&:hover': {
+                            borderColor: evColor,
+                            bgcolor: alpha(evColor, 0.08),
+                          },
+                        }}
+                      >
+                        Смотреть
+                      </Button>
+                    )}
+                    </Box>
                   </Paper>
                 );
               })}
