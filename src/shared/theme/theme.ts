@@ -175,6 +175,20 @@ export const darkTheme = createTheme({
         },
       },
     },
+    MuiMenu: {
+      styleOverrides: {
+        paper: {
+          maxHeight: 300,
+        },
+      },
+    },
+    MuiAutocomplete: {
+      styleOverrides: {
+        listbox: {
+          maxHeight: 300,
+        },
+      },
+    },
     MuiTextField: {
       defaultProps: {
         variant: 'outlined',

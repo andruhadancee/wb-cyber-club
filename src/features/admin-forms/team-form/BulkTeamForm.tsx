@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import TextField from '@mui/material/TextField';
-import MenuItem from '@mui/material/MenuItem';
+import Autocomplete from '@mui/material/Autocomplete';
 import Stack from '@mui/material/Stack';
 import Button from '@mui/material/Button';
 import Box from '@mui/material/Box';
@@ -43,18 +43,16 @@ export function BulkTeamForm({ onSubmit, onCancel }: Props) {
 
   return (
     <Stack spacing={2.5} sx={{ pt: 1 }}>
-      <TextField
-        select
-        label="Турнир"
-        required
-        value={tournamentId}
-        onChange={(e) => setTournamentId(Number(e.target.value))}
-      >
-        <MenuItem value="">Выберите турнир</MenuItem>
-        {activeTournaments.map((t) => (
-          <MenuItem key={t.id} value={t.id}>{t.title}</MenuItem>
-        ))}
-      </TextField>
+      <Autocomplete
+        options={activeTournaments}
+        getOptionLabel={(o) => o.title}
+        value={activeTournaments.find((t) => t.id === tournamentId) ?? null}
+        onChange={(_, v) => setTournamentId(v?.id ?? '')}
+        noOptionsText="Ничего не найдено"
+        renderInput={(params) => (
+          <TextField {...params} label="Турнир" required placeholder="Поиск..." />
+        )}
+      />
 
       <TextField
         label="Имена (через запятую, точку с запятой или с новой строки)"

@@ -27,6 +27,7 @@ export function TournamentsPage() {
 
   const getRegLink = (t: (typeof activeTournaments)[0]) => {
     if (t.custom_link?.trim()) return t.custom_link.trim();
+    if (t.registration_link?.trim()) return t.registration_link.trim();
     if (links[String(t.discipline_id)]) return links[String(t.discipline_id)];
     return '#';
   };

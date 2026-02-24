@@ -3,7 +3,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useEffect } from 'react';
 import TextField from '@mui/material/TextField';
-import MenuItem from '@mui/material/MenuItem';
+import Autocomplete from '@mui/material/Autocomplete';
 import Stack from '@mui/material/Stack';
 import Button from '@mui/material/Button';
 import Box from '@mui/material/Box';
@@ -56,12 +56,23 @@ export function TeamForm({ team, onSubmit, onCancel, onDirtyChange }: Props) {
           name="tournamentId"
           control={control}
           render={({ field }) => (
-            <TextField {...field} select label="Турнир" required error={!!errors.tournamentId} helperText={errors.tournamentId?.message}>
-              <MenuItem value="">Выберите турнир</MenuItem>
-              {activeTournaments.map((t) => (
-                <MenuItem key={t.id} value={t.id}>{t.title}</MenuItem>
-              ))}
-            </TextField>
+            <Autocomplete
+              options={activeTournaments}
+              getOptionLabel={(o) => o.title}
+              value={activeTournaments.find((t) => t.id === field.value) ?? null}
+              onChange={(_, v) => field.onChange(v?.id ?? 0)}
+              noOptionsText="Ничего не найдено"
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Турнир"
+                  required
+                  error={!!errors.tournamentId}
+                  helperText={errors.tournamentId?.message}
+                  placeholder="Поиск..."
+                />
+              )}
+            />
           )}
         />
         <Controller

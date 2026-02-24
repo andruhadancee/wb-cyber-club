@@ -708,7 +708,7 @@ export function AdminPanel() {
     teams: renderTeams,
     brackets: () => (
       <AdminBracketTab
-        tournaments={[...tournamentStore.activeTournaments, ...tournamentStore.pastTournaments]}
+        tournaments={tournamentStore.activeTournaments}
       />
     ),
     calendar: renderCalendar,

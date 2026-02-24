@@ -40,7 +40,7 @@ export async function getAll(status?: string) {
     orderBy: { date: 'desc' },
   });
 
-  const direction = -1;
+  const direction = isArchive ? -1 : 1;
   tournaments.sort((a: NonNullable<TournamentWithDiscipline>, b: NonNullable<TournamentWithDiscipline>) => {
     const dateA = dayjs(parseDateForSort(a.date));
     const dateB = dayjs(parseDateForSort(b.date));
