@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { useEffect, useState, useCallback } from 'react';
 import dayjs, { type Dayjs } from 'dayjs';
 import TextField from '@mui/material/TextField';
-import MenuItem from '@mui/material/MenuItem';
+import Autocomplete from '@mui/material/Autocomplete';
 import Stack from '@mui/material/Stack';
 import Button from '@mui/material/Button';
 import Box from '@mui/material/Box';
@@ -138,21 +138,23 @@ export function TournamentForm({ tournament, isPast = false, onSubmit, onCancel,
           name="disciplineId"
           control={control}
           render={({ field }) => (
-            <TextField
-              {...field}
-              value={field.value || ''}
-              onChange={(e) => field.onChange(Number(e.target.value))}
-              select
-              label="Дисциплина"
-              required
-              error={!!errors.disciplineId}
-              helperText={errors.disciplineId?.message}
-            >
-              <MenuItem value="">{disciplines.length === 0 ? 'Сначала создайте дисциплину' : 'Выберите'}</MenuItem>
-              {disciplines.map((d) => (
-                <MenuItem key={d.id} value={d.id}>{d.name}</MenuItem>
-              ))}
-            </TextField>
+            <Autocomplete
+              options={disciplines}
+              getOptionLabel={(o) => o.name}
+              value={disciplines.find((d) => d.id === field.value) ?? null}
+              onChange={(_, v) => field.onChange(v?.id ?? 0)}
+              noOptionsText="Ничего не найдено"
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Дисциплина"
+                  required
+                  error={!!errors.disciplineId}
+                  helperText={errors.disciplineId?.message}
+                  placeholder="Поиск..."
+                />
+              )}
+            />
           )}
         />
 

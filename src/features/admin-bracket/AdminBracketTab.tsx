@@ -2,10 +2,8 @@ import { useState, useCallback } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
-import Select from '@mui/material/Select';
-import MenuItem from '@mui/material/MenuItem';
-import FormControl from '@mui/material/FormControl';
-import InputLabel from '@mui/material/InputLabel';
+import Autocomplete from '@mui/material/Autocomplete';
+import TextField from '@mui/material/TextField';
 import CircularProgress from '@mui/material/CircularProgress';
 import Alert from '@mui/material/Alert';
 import Dialog from '@mui/material/Dialog';
@@ -107,20 +105,17 @@ export function AdminBracketTab({ tournaments }: AdminBracketTabProps) {
     <Box>
       {/* Header */}
       <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-end', mb: 3, flexWrap: 'wrap' }}>
-        <FormControl sx={{ minWidth: 300 }}>
-          <InputLabel>Выберите турнир</InputLabel>
-          <Select
-            value={selectedId}
-            label="Выберите турнир"
-            onChange={(e) => handleSelectTournament(Number(e.target.value))}
-          >
-            {tournaments.map((t) => (
-              <MenuItem key={t.id} value={t.id}>
-                {t.title} ({t.discipline})
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
+        <Autocomplete
+          sx={{ minWidth: 300 }}
+          options={tournaments}
+          getOptionLabel={(o) => `${o.title} (${o.discipline})`}
+          value={tournaments.find((t) => t.id === selectedId) ?? null}
+          onChange={(_, v) => handleSelectTournament(v?.id ?? 0)}
+          noOptionsText="Ничего не найдено"
+          renderInput={(params) => (
+            <TextField {...params} label="Выберите турнир" placeholder="Поиск..." />
+          )}
+        />
 
         {selectedId && !(selectedTournament?.status === 'finished' && !hasBracket) && (
           <>
