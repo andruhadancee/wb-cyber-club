@@ -27,8 +27,6 @@ import { showError } from '@/shared/lib/toast';
 import { pageEntrance } from '@/shared/lib/animations';
 import { VideoBackground } from '@/shared/ui/video-background/VideoBackground';
 
-const ADMIN_KEY = 'wbcyber_admin';
-
 function AdminContent() {
   const navigate = useNavigate();
   const theme = useTheme();
@@ -38,14 +36,16 @@ function AdminContent() {
   const [password, setPassword] = useState('');
 
   useEffect(() => {
-    const isAdmin = localStorage.getItem(ADMIN_KEY) === 'true';
-    if (isAdmin) {
-      setAuthorized(true);
-      setLoading(false);
-    } else {
-      setShowLogin(true);
-      setLoading(false);
-    }
+    fetch('/api/admin/check', { credentials: 'include' })
+      .then((res) => {
+        if (res.ok) {
+          setAuthorized(true);
+        } else {
+          setShowLogin(true);
+        }
+      })
+      .catch(() => setShowLogin(true))
+      .finally(() => setLoading(false));
   }, []);
 
   const handleLogin = useCallback(async () => {
@@ -58,7 +58,6 @@ function AdminContent() {
       });
 
       if (res.ok) {
-        localStorage.setItem(ADMIN_KEY, 'true');
         setAuthorized(true);
         setShowLogin(false);
       } else {
@@ -71,8 +70,8 @@ function AdminContent() {
     }
   }, [password]);
 
-  const handleLogout = useCallback(() => {
-    localStorage.removeItem(ADMIN_KEY);
+  const handleLogout = useCallback(async () => {
+    await fetch('/api/admin/logout', { method: 'POST', credentials: 'include' }).catch(() => {});
     navigate('/');
   }, [navigate]);
 

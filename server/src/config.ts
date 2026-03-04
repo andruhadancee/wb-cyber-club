@@ -10,6 +10,7 @@ const envSchema = z.object({
   DEV_USER: z.string().default('admin'),
   DEV_PASS: z.string().default(''),
   ADMIN_PASSWORD: z.string().default(''),
+  JWT_SECRET: z.string().optional(),
   REDIS_URL: z.string().default('redis://localhost:6379'),
 
   S3_ENDPOINT: z.string().default(''),

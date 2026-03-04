@@ -70,8 +70,7 @@ services:
   # ── Redis ──
   redis:
     image: redis:7-alpine
-    ports:
-      - "6379:6379"
+    network_mode: host
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -85,6 +84,7 @@ services:
           memory: 128M
     command: >
       redis-server
+      --bind 127.0.0.1
       --maxmemory 48mb
       --maxmemory-policy allkeys-lru
       --save ""

@@ -1,4 +1,6 @@
 import { Router } from 'express';
+import type { Request, Response, NextFunction } from 'express';
+import { requireAdmin } from '../middleware/admin-auth';
 
 import tournamentsRouter from './tournaments';
 import teamsRouter from './teams';
@@ -14,16 +16,24 @@ import adminRouter from './admin';
 
 const router = Router();
 
+function adminOnMutation(req: Request, res: Response, next: NextFunction): void {
+  if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(req.method)) {
+    requireAdmin(req, res, next);
+    return;
+  }
+  next();
+}
+
 router.use('/health', healthRouter);
 router.use('/admin', adminRouter);
-router.use('/tournaments', tournamentsRouter);
-router.use('/brackets', bracketsRouter);
-router.use('/teams', teamsRouter);
-router.use('/calendar', calendarRouter);
-router.use('/disciplines', disciplinesRouter);
-router.use('/links', linksRouter);
-router.use('/regulations', regulationsRouter);
-router.use('/social', socialRouter);
-router.use('/upload', uploadRouter);
+router.use('/tournaments', adminOnMutation, tournamentsRouter);
+router.use('/brackets', adminOnMutation, bracketsRouter);
+router.use('/teams', adminOnMutation, teamsRouter);
+router.use('/calendar', adminOnMutation, calendarRouter);
+router.use('/disciplines', adminOnMutation, disciplinesRouter);
+router.use('/links', adminOnMutation, linksRouter);
+router.use('/regulations', adminOnMutation, regulationsRouter);
+router.use('/social', adminOnMutation, socialRouter);
+router.use('/upload', requireAdmin, uploadRouter);
 
 export default router;

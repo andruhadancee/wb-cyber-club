@@ -6,6 +6,7 @@ import path from 'path';
 import cors from 'cors';
 import compression from 'compression';
 import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
 import type { Server } from 'http';
 
 import { config } from './config';
@@ -20,6 +21,9 @@ import { connectRedis, disconnectRedis } from './redis';
 import { autoArchiveExpired } from './services/tournament.service';
 
 const app = express();
+
+// ── Trust proxy (behind Nginx) ──
+app.set('trust proxy', 1);
 
 // ── Security ──
 const isProd = config.NODE_ENV === 'production';
@@ -46,8 +50,9 @@ const corsOrigin =
     ? [`https://${config.DOMAIN}`, `https://www.${config.DOMAIN}`]
     : '*';
 
-app.use(cors({ origin: corsOrigin }));
+app.use(cors({ origin: corsOrigin, credentials: true }));
 app.use(express.json());
+app.use(cookieParser());
 
 // ── Rate limiting ──
 app.use('/api/', apiLimiter);
