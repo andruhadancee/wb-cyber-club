@@ -82,11 +82,14 @@ services:
       resources:
         limits:
           cpus: '0.25'
-          memory: 64M
+          memory: 128M
     command: >
       redis-server
-      --maxmemory 64mb
+      --maxmemory 48mb
       --maxmemory-policy allkeys-lru
+      --save ""
+      --appendonly no
+      --stop-writes-on-bgsave-error no
 
 volumes:
   nginx_cache:
