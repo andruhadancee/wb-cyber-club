@@ -60,6 +60,25 @@ function nextPow2(n: number): number {
   return Math.pow(2, Math.ceil(Math.log2(n)));
 }
 
+/**
+ * Standard bracket seeding order (0-based).
+ * Ensures byes are distributed evenly across both halves.
+ * For size=8 returns [0,7, 3,4, 1,6, 2,5] — pairs: (0v7),(3v4),(1v6),(2v5).
+ */
+function standardSeedOrder(size: number): number[] {
+  const rounds = Math.log2(size);
+  let seeds = [0, 1];
+  for (let i = 0; i < rounds - 1; i++) {
+    const next: number[] = [];
+    const len = seeds.length * 2;
+    for (const s of seeds) {
+      next.push(s, len - 1 - s);
+    }
+    seeds = next;
+  }
+  return seeds;
+}
+
 function findMatch(
   matches: MatchRow[],
   side: BracketSide,
@@ -121,16 +140,18 @@ export async function generate(tournamentId: number, format: BracketFormat = 'si
   const allMatches: MatchCreate[] = [];
 
   // ═════════ Upper Bracket ═════════
-  // Round 1
-  // Fill team1 slots first (every match gets at least 1 team), then team2 with remaining.
-  // This prevents ghost matches and ensures BYEs don't cascade past R1.
+  // Round 1 — use standard seeding order so BYEs are distributed evenly.
   const r1Count = size / 2;
+  const seedOrder = standardSeedOrder(size);
+
   for (let i = 0; i < r1Count; i++) {
     if (isEmptyBracket) {
       allMatches.push(emptyMatch(tournamentId, 1, i, 'upper'));
     } else {
-      const t1 = shuffled[i] ?? null;
-      const t2 = shuffled[i + r1Count] ?? null;
+      const seed1 = seedOrder[i * 2];
+      const seed2 = seedOrder[i * 2 + 1];
+      const t1 = shuffled[seed1] ?? null;
+      const t2 = shuffled[seed2] ?? null;
       const isBye = !t1 || !t2;
       const winner = isBye ? (t1 || t2) : null;
 
