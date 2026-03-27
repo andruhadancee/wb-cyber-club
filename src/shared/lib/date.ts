@@ -1,11 +1,15 @@
 import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
 import utc from 'dayjs/plugin/utc';
+import timezone from 'dayjs/plugin/timezone';
 import 'dayjs/locale/ru';
 
 dayjs.extend(customParseFormat);
 dayjs.extend(utc);
+dayjs.extend(timezone);
 dayjs.locale('ru');
+
+const MSK = 'Europe/Moscow';
 
 const RUSSIAN_DATE_FORMATS = [
   'D MMMM YYYY г.',
@@ -44,7 +48,7 @@ export function formatDateForDisplay(dateStr: string): string {
   }
 }
 
-/** Парсит дату и время турнира, возвращает Date или null */
+/** Парсит дату и время турнира как московское (Europe/Moscow), возвращает Date или null */
 export function parseTournamentDateTime(
   dateStr: string,
   timeStr: string,
@@ -53,22 +57,14 @@ export function parseTournamentDateTime(
     const timeMatch = timeStr.match(/(\d{1,2}):(\d{2})/);
     if (!timeMatch) return null;
 
-    const dateParsed = dayjs(dateStr, ALL_DATE_FORMATS, 'ru', true);
+    let dateParsed = dayjs(dateStr, ALL_DATE_FORMATS, 'ru', true);
     if (!dateParsed.isValid()) {
-      const fallback = dayjs(dateStr);
-      if (!fallback.isValid()) return null;
-      return fallback
-        .hour(parseInt(timeMatch[1]))
-        .minute(parseInt(timeMatch[2]))
-        .second(0)
-        .toDate();
+      dateParsed = dayjs(dateStr);
+      if (!dateParsed.isValid()) return null;
     }
 
-    return dateParsed
-      .hour(parseInt(timeMatch[1]))
-      .minute(parseInt(timeMatch[2]))
-      .second(0)
-      .toDate();
+    const isoDate = dateParsed.format('YYYY-MM-DD');
+    return dayjs.tz(`${isoDate} ${timeMatch[1]}:${timeMatch[2]}`, MSK).toDate();
   } catch {
     return null;
   }

@@ -18,10 +18,10 @@ import { normalizeTimeToHHmm } from '@/shared/lib/date';
 const schema = z.object({
   title: z.string().min(1, 'Обязательное поле'),
   eventDate: z.string().min(1, 'Укажите дату'),
-  disciplineId: z.coerce.number().optional(),
+  disciplineId: z.coerce.number().min(1, 'Выберите дисциплину'),
   startTime: z.string().optional(),
   prize: z.string().optional(),
-  maxTeams: z.coerce.number().optional(),
+  maxTeams: z.coerce.number().min(2, 'Минимум 2 команды'),
   description: z.string().optional(),
   imageUrl: z.string().optional(),
   registrationLink: z.string().optional(),
@@ -112,6 +112,9 @@ export function CalendarEventForm({ event, defaultDate, onSubmit, onCancel, onDi
                 <TextField
                   {...params}
                   label="Дисциплина"
+                  required
+                  error={!!errors.disciplineId}
+                  helperText={errors.disciplineId?.message}
                   placeholder={disciplines.length === 0 ? 'Сначала создайте дисциплину' : 'Поиск...'}
                 />
               )}
@@ -168,7 +171,15 @@ export function CalendarEventForm({ event, defaultDate, onSubmit, onCancel, onDi
           name="maxTeams"
           control={control}
           render={({ field }) => (
-            <TextField {...field} type="number" label="Количество команд" inputProps={{ min: 2 }} />
+            <TextField
+              {...field}
+              type="number"
+              label="Количество команд"
+              required
+              error={!!errors.maxTeams}
+              helperText={errors.maxTeams?.message}
+              inputProps={{ min: 2 }}
+            />
           )}
         />
 

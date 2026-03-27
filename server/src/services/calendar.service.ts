@@ -118,13 +118,13 @@ export async function create(data: CreateCalendarEventInput) {
     if (tournamentId) {
       const existing = await tx.tournament.findUnique({ where: { id: tournamentId } });
       if (!existing) throw AppError.notFound('Турнир не найден');
-    } else if (data.disciplineId && data.prize && data.maxTeams) {
+    } else if (data.disciplineId != null && data.disciplineId > 0 && data.maxTeams != null && data.maxTeams > 0) {
       const created = await tx.tournament.create({
         data: {
           title: data.title,
           discipline_id: data.disciplineId,
           date: data.eventDate,
-          prize: data.prize,
+          prize: data.prize || '',
           max_teams: data.maxTeams,
           registration_link: data.registrationLink ?? null,
           custom_link: data.customLink ?? null,
