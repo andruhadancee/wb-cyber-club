@@ -80,6 +80,11 @@ jobs:
             git fetch origin mvp && git reset --hard origin/mvp
 
             docker compose up -d --force-recreate --remove-orphans app
+
+            # Recreate certbot/nginx if their compose config changed.
+            # `up -d` is a no-op when nothing changed, so it is safe to always run.
+            docker compose up -d certbot nginx
+
             docker image prune -f
 
             echo "Deploy completed at $(date)"
